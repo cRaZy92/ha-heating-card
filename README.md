@@ -9,14 +9,19 @@ A Home Assistant Lovelace card for a single room's heating. It shows:
 
 It works for rooms with one TRV or several.
 
+<p>
+  <img src="https://raw.githubusercontent.com/cRaZy92/ha-heating-card/main/docs/images/card.png" alt="Heating Room Card" width="360" />
+  <img src="https://raw.githubusercontent.com/cRaZy92/ha-heating-card/main/docs/images/editor.png" alt="Schedule editor" width="360" />
+</p>
+
 ## Install
 
-### HACS (recommended, gives update notifications in HA)
+### Marketplace / HACS (recommended, gives update notifications in HA)
 
-1. In HA open **HACS → ⋮ (top right) → Custom repositories**.
+1. In HA open **Marketplace** (HACS before HA 2026.11) **→ ⋮ (top right) → Custom repositories**.
 2. Repository: `https://github.com/cRaZy92/ha-heating-card`, Type: **Dashboard**, then **Add**.
-3. Search HACS for **Heating Room Card**, click **Download**, then reload the browser/app.
-   HACS adds the dashboard resource for you.
+3. Search for **Heating Room Card**, click **Download**, then reload the browser/app.
+   The dashboard resource is added for you.
 
 New versions then show up as updates in **Settings → Updates**.
 
@@ -131,3 +136,7 @@ npm test          # unit tests (Vitest + happy-dom)
 npm run dev       # then open http://localhost:5173/dev/index.html (mocked hass, 1- and 2-TRV rooms)
 npm run build     # dist/heating-room-card.js
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
