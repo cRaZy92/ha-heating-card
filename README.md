@@ -128,6 +128,8 @@ HACS then offers it as an update.
 - **Versions:** the patch number bumps on its own (`v0.1.0`, `v0.1.1`, …). To start a new minor or
   major line, set it in `package.json` (e.g. `0.2.0`) and push.
 - **Skipping:** put `[skip release]` in the commit message to push without releasing.
+- **Changelog:** the release notes, which HA shows in the update dialog, list the subject and body of every
+  commit since the last release. Write commit messages for people using the card.
 
 ## Development
 
