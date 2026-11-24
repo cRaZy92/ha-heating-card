@@ -6,6 +6,7 @@ A Home Assistant Lovelace card for a single room's heating. It shows:
 - the **actual heating status**. It tells apart "a TRV wants heat" and "the boiler is actually heating".
 - the **weekday and weekend schedule** as two 24h timelines, both always visible.
 - a **schedule editor** popup. Nothing is written until you press Save.
+- a **visual card editor**, so a room can be set up without writing YAML.
 
 It works for rooms with one TRV or several.
 
@@ -35,6 +36,22 @@ New versions then show up as updates in **Settings → Updates**.
 4. Hard-reload the browser or the app. When you update the file later, bump the cache: `/local/heating-room-card.js?v=2`.
 
 ## Configuration
+
+### Visual editor
+
+Add the card from the dashboard's card picker (**Heating Room Card**) and fill in the editor:
+
+- **General:** name, icon and the boiler switch.
+- **Radiator valves (TRV):** add one row per TRV with its thermostat, valve-position sensor and battery sensor.
+  With two or more TRVs, pick which one the dial controls; your sync automations keep the others in step.
+- **Schedule:** use **Fill from helpers** and pick your helper prefix (for example `trv_izba`). It fills in
+  `input_boolean.<prefix>_on_off`, `input_number.<prefix>_night_temp` / `_day_temp` and
+  `input_datetime.<prefix>_day_time` / `_night_time` / `_day_time_weekend` / `_night_time_weekend`
+  that exist. Any helper can also be picked by hand.
+- **Display:** when to show batteries and the low-battery threshold.
+
+Until every required entity is picked, the card shows what is still missing instead of an error.
+The same options can be written in YAML:
 
 ### Room with two TRVs
 

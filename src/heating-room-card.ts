@@ -5,6 +5,8 @@ import './components/hrc-schedule';
 import './components/hrc-editor';
 import type { EditorValues, NumberLimits } from './components/hrc-editor';
 import { normalizeConfig } from './config';
+import './editor/heating-room-card-editor';
+import { configProblems, stubConfig } from './editor/form-model';
 import { evaluateStatus, type StatusKind } from './status';
 import { expectedTemp, formatTime, readSchedule } from './schedule';
 import { decimalSeparator, t, type I18nKey } from './i18n';
@@ -20,6 +22,17 @@ const STATUS_KEY: Record<StatusKind, I18nKey> = {
   idle: 'status_idle',
   wants_heat: 'status_wants_heat',
   heating: 'status_heating',
+};
+
+const SETUP_LABEL: Record<string, I18nKey> = {
+  trvs: 'ed_climate',
+  'schedule.enabled': 'ed_enabled',
+  'schedule.night_temp': 'ed_night_temp',
+  'schedule.day_temp': 'ed_day_temp',
+  'schedule.weekday.day': 'ed_weekday_day',
+  'schedule.weekday.night': 'ed_weekday_night',
+  'schedule.weekend.day': 'ed_weekend_day',
+  'schedule.weekend.night': 'ed_weekend_night',
 };
 
 function numAttr(entity: HassEntity | undefined, attr: string): number | null {
@@ -57,13 +70,30 @@ export class HeatingRoomCard extends LitElement {
   @state() private editorOpen = false;
   @state() private now = new Date();
   @state() private errorVisible = false;
+  /** Set instead of `config` while the config is incomplete or invalid. */
+  @state() private setup?: { missing: string[]; error?: string };
 
   private pendingTimer?: ReturnType<typeof setTimeout>;
   private nowTimer?: ReturnType<typeof setInterval>;
   private errorTimer?: ReturnType<typeof setTimeout>;
 
   setConfig(raw: unknown) {
-    this.config = normalizeConfig(raw);
+    if (!raw || typeof raw !== 'object') throw new Error('heating-room-card: invalid configuration');
+    const missing = configProblems(raw);
+    try {
+      if (missing.length) throw new Error('incomplete');
+      this.config = normalizeConfig(raw);
+      this.setup = undefined;
+    } catch (err) {
+      // Shown in the card instead of HA's red error card, so the editor preview stays useful.
+      this.clearPending();
+      this.config = undefined;
+      this.setup = missing.length ? { missing } : { missing, error: (err as Error).message };
+    }
+  }
+
+  static getConfigElement() {
+    return document.createElement('heating-room-card-editor');
   }
 
   getCardSize() {
@@ -74,18 +104,8 @@ export class HeatingRoomCard extends LitElement {
     return { columns: 12 };
   }
 
-  static getStubConfig() {
-    return {
-      trvs: [{ climate: 'climate.trv', valve: 'sensor.trv_valve', battery: 'sensor.trv_battery' }],
-      boiler: 'switch.boiler',
-      schedule: {
-        enabled: 'input_boolean.room_on_off',
-        night_temp: 'input_number.room_night_temp',
-        day_temp: 'input_number.room_day_temp',
-        weekday: { day: 'input_datetime.room_day_time', night: 'input_datetime.room_night_time' },
-        weekend: { day: 'input_datetime.room_day_time_weekend', night: 'input_datetime.room_night_time_weekend' },
-      },
-    };
+  static getStubConfig(hass?: Hass) {
+    return stubConfig(hass);
   }
 
   connectedCallback() {
@@ -269,7 +289,22 @@ export class HeatingRoomCard extends LitElement {
     </div>`;
   }
 
+  private renderSetup(setup: { missing: string[]; error?: string }) {
+    return html`<ha-card class="setup">
+      <ha-icon icon="mdi:radiator"></ha-icon>
+      <div>
+        <div class="setup-title">${t(this.hass, 'setup_title')}</div>
+        ${setup.error
+          ? html`<div class="setup-text">${setup.error}</div>`
+          : html`<div class="setup-text">
+              ${t(this.hass, 'setup_missing')}: ${setup.missing.map((p) => t(this.hass, SETUP_LABEL[p])).join(', ')}
+            </div>`}
+      </div>
+    </ha-card>`;
+  }
+
   protected render() {
+    if (this.setup) return this.renderSetup(this.setup);
     if (!this.config || !this.hass) return nothing;
     const c = this.config;
     const hass = this.hass;
@@ -341,6 +376,25 @@ export class HeatingRoomCard extends LitElement {
   }
 
   static styles = css`
+    ha-card.setup {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      padding: 16px;
+    }
+    ha-card.setup ha-icon {
+      color: var(--secondary-text-color);
+      flex: none;
+    }
+    .setup-title {
+      font-weight: 500;
+      color: var(--primary-text-color);
+    }
+    .setup-text {
+      margin-top: 4px;
+      font-size: 14px;
+      color: var(--secondary-text-color);
+    }
     ha-card {
       display: block;
       padding: 12px 8px 8px;
@@ -460,7 +514,7 @@ declare global {
     'heating-room-card': HeatingRoomCard;
   }
   interface Window {
-    customCards?: { type: string; name: string; description: string; preview?: boolean }[];
+    customCards?: { type: string; name: string; description: string; preview?: boolean; documentationURL?: string }[];
   }
 }
 
@@ -473,4 +527,6 @@ window.customCards.push({
   type: 'heating-room-card',
   name: 'Heating Room Card',
   description: 'Room heating: setpoint dial, heating status and weekday/weekend schedule.',
+  documentationURL: 'https://github.com/cRaZy92/ha-heating-card',
+  preview: true,
 });

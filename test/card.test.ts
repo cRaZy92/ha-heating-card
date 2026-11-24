@@ -297,9 +297,45 @@ describe('heating-room-card', () => {
     expect($('.name').textContent).toContain('TRV');
   });
 
-  it('setConfig rethrows invalid config', () => {
+  it('setConfig still throws for a config that is not an object', () => {
     const c = document.createElement('heating-room-card') as HeatingRoomCard;
-    expect(() => c.setConfig({ type: 'x' })).toThrow(/trvs/);
+    expect(() => c.setConfig(null)).toThrow();
+  });
+
+  it('an incomplete config shows a setup placeholder listing what is missing', async () => {
+    await mount({ type: 'x', trvs: [{ climate: 'climate.shelly_trv_3' }], schedule: { enabled: schedule.enabled } }, oneTrvHass());
+    expect($('.setup')).not.toBeNull();
+    expect($('hrc-dial')).toBeNull();
+    const text = $('.setup').textContent!;
+    expect(text).toContain('Finish setting up this card');
+    expect(text).toContain('Night temperature');
+    expect(text).toContain('Weekend: night starts');
+    expect(text).not.toContain('Schedule on/off');
+  });
+
+  it('a config error that is not a missing field is shown in the placeholder', async () => {
+    await mount({ ...oneTrvConfig, show_battery: 'sometimes' }, oneTrvHass());
+    expect($('.setup').textContent).toContain('show_battery');
+  });
+
+  it('fixing the config replaces the placeholder with the card', async () => {
+    await mount({ type: 'x' }, oneTrvHass());
+    card.setConfig(oneTrvConfig);
+    await card.updateComplete;
+    expect($('.setup')).toBeNull();
+    expect($('hrc-dial')).not.toBeNull();
+  });
+
+  it('offers the visual editor', async () => {
+    const el = await (customElements.get('heating-room-card') as any).getConfigElement();
+    expect(el.tagName.toLowerCase()).toBe('heating-room-card-editor');
+  });
+
+  it('stub config uses real entities from hass', () => {
+    const stub = (customElements.get('heating-room-card') as any).getStubConfig(oneTrvHass());
+    expect(stub.trvs[0].climate).toBe('climate.shelly_trv_3');
+    expect(stub.boiler).toBe('switch.kotol_rele');
+    expect(stub.schedule).toEqual(schedule);
   });
 
   it('card size and grid options', async () => {
