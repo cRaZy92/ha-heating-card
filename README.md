@@ -11,6 +11,17 @@ It works for rooms with one TRV or several.
 
 ## Install
 
+### HACS (recommended, gives update notifications in HA)
+
+1. In HA open **HACS → ⋮ (top right) → Custom repositories**.
+2. Repository: `https://github.com/cRaZy92/ha-heating-card`, Type: **Dashboard**, then **Add**.
+3. Search HACS for **Heating Room Card**, click **Download**, then reload the browser/app.
+   HACS adds the dashboard resource for you.
+
+New versions then show up as updates in **Settings → Updates**.
+
+### Manual
+
 1. `npm install && npm run build`
 2. Copy `dist/heating-room-card.js` to `/config/www/heating-room-card.js`.
 3. Go to **Settings → Dashboards → ⋮ → Resources → Add resource**:
@@ -101,6 +112,16 @@ Labels are in Slovak when the HA language is Slovak, and in English otherwise.
 - **Schedule tick:** a tick on the dial marks the temperature the schedule expects right now. A `▲ plán X°` hint appears when the current setpoint differs from it. Both are hidden while the schedule is off.
 - **Schedule editor:** tap the schedule to open it. Save writes only the fields you changed, through `input_number.set_value` and `input_datetime.set_datetime`.
 - **Errors:** if any call to HA fails (setpoint, On/Off, schedule save), the dial reverts to the real value immediately and the card shows *Nepodarilo sa uložiť* / *Couldn't save* for 5s. The failure is logged to the console as a warning, and there are no unhandled errors.
+
+## Releasing
+
+Every push to `main` publishes a release automatically. The *Release* workflow runs the typecheck
+and tests, builds the card, and publishes a GitHub release with `heating-room-card.js` attached.
+HACS then offers it as an update.
+
+- **Versions:** the patch number bumps on its own (`v0.1.0`, `v0.1.1`, …). To start a new minor or
+  major line, set it in `package.json` (e.g. `0.2.0`) and push.
+- **Skipping:** put `[skip release]` in the commit message to push without releasing.
 
 ## Development
 

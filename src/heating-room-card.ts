@@ -464,6 +464,10 @@ declare global {
   }
 }
 
+declare const __CARD_VERSION__: string;
+const VERSION = typeof __CARD_VERSION__ === 'string' ? __CARD_VERSION__ : 'dev';
+console.info(`%c HEATING-ROOM-CARD %c ${VERSION} `, 'color: #fff; background: #ff9800; font-weight: 700', 'color: #ff9800; background: #222');
+
 window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'heating-room-card',
