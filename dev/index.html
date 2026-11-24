@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" />
+    <title>Heating Room Card — dev</title>
+    <style>
+      :root {
+        --primary-text-color: #e1e1e1;
+        --secondary-text-color: #9b9b9b;
+        --card-background-color: #1c1c1c;
+        --ha-card-background: #1c1c1c;
+        --divider-color: rgba(225, 225, 225, 0.12);
+        --disabled-color: #6f6f6f;
+        --mdc-theme-secondary: #ff9800;
+        --error-color: #db4437;
+      }
+      body {
+        margin: 0;
+        padding: 16px;
+        background: #111;
+        color: var(--primary-text-color);
+        font-family: Roboto, sans-serif;
+      }
+      .column {
+        width: 360px;
+        max-width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      ha-card {
+        display: block;
+        background: var(--card-background-color);
+        border-radius: 12px;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        font-size: 12px;
+      }
+      .controls button {
+        font-size: 12px;
+      }
+      #log {
+        font: 11px monospace;
+        white-space: pre-wrap;
+        color: #8c8;
+        max-height: 160px;
+        overflow: auto;
+      }
+      .spacer {
+        height: 600px;
+        color: #555;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="column">
+      <div class="controls">
+        <button id="lang">Toggle sk/en</button>
+        <button id="trv1">Cycle TRV 1 action</button>
+        <button id="boiler">Toggle boiler</button>
+        <button id="battery">Low battery TRV 2</button>
+        <button id="off">Toggle TRV 2 off</button>
+      </div>
+      <div id="cards"></div>
+      <div id="log"></div>
+      <div class="spacer">(scroll space — swipe over the dial centre to check the page scrolls)</div>
+    </div>
+
+    <script type="module">
+      // Minimal ha-icon stub using the MDI webfont (dev only).
+      customElements.define(
+        'ha-icon',
+        class extends HTMLElement {
+          static observedAttributes = ['icon'];
+          constructor() {
+            super();
+            this.attachShadow({ mode: 'open' }).innerHTML =
+              '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css">' +
+              '<style>:host{display:inline-flex;line-height:1}span{font-size:var(--mdc-icon-size,24px)}</style><span></span>';
+          }
+          attributeChangedCallback() {
+            this.shadowRoot.querySelector('span').className = 'mdi ' + (this.getAttribute('icon') || '').replace(':', '-');
+          }
+        },
+      );
+      customElements.define('ha-card', class extends HTMLElement {});
+
+      await import('/src/heating-room-card.ts');
+
+      const schedule = (p) => ({
+        enabled: `input_boolean.${p}_on_off`,
+        night_temp: `input_number.${p}_night_temp`,
+        day_temp: `input_number.${p}_day_temp`,
+        weekday: { day: `input_datetime.${p}_day_time`, night: `input_datetime.${p}_night_time` },
+        weekend: { day: `input_datetime.${p}_day_time_weekend`, night: `input_datetime.${p}_night_time_weekend` },
+      });
+
+      const configs = [
+        {
+          type: 'custom:heating-room-card',
+          name: 'Tech. Izba',
+          icon: 'mdi:desktop-classic',
+          show_battery: 'always',
+          climate: 'climate.shelly_trv_2',
+          boiler: 'switch.kotol_rele',
+          trvs: [
+            { climate: 'climate.shelly_trv_1', valve: 'sensor.valve_1', battery: 'sensor.trv_1_battery' },
+            { climate: 'climate.shelly_trv_2', valve: 'sensor.valve_2', battery: 'sensor.trv_2_battery' },
+          ],
+          schedule: schedule('trv_izba'),
+        },
+        {
+          type: 'custom:heating-room-card',
+          name: 'Spálňa',
+          icon: 'mdi:bed',
+          boiler: 'switch.kotol_rele',
+          trvs: [{ climate: 'climate.shelly_trv_3', valve: 'sensor.valve_spalna', battery: 'sensor.trv_3_battery' }],
+          schedule: schedule('trv_spalna'),
+        },
+      ];
+
+      const climate = (temp, action, name) => ({
+        state: 'heat',
+        attributes: {
+          friendly_name: name, hvac_action: action, temperature: temp, current_temperature: 21.7,
+          min_temp: 5, max_temp: 30, target_temp_step: 0.5,
+        },
+      });
+      const states = {
+        'climate.shelly_trv_1': climate(21.5, 'heating', 'TRV 1'),
+        'climate.shelly_trv_2': climate(21.5, 'idle', 'TRV 2'),
+        'climate.shelly_trv_3': climate(20, 'idle', 'TRV Spálňa'),
+        'switch.kotol_rele': { state: 'off', attributes: {} },
+        'sensor.valve_1': { state: '36', attributes: {} },
+        'sensor.valve_2': { state: '43', attributes: {} },
+        'sensor.valve_spalna': { state: '0', attributes: {} },
+        'sensor.trv_1_battery': { state: '92', attributes: {} },
+        'sensor.trv_2_battery': { state: '80', attributes: {} },
+        'sensor.trv_3_battery': { state: '64', attributes: {} },
+      };
+      for (const p of ['trv_izba', 'trv_spalna']) {
+        const s = schedule(p);
+        states[s.enabled] = { state: 'on', attributes: {} };
+        states[s.night_temp] = { state: '17.0', attributes: { min: 5, max: 25, step: 0.5 } };
+        states[s.day_temp] = { state: '21.5', attributes: { min: 5, max: 25, step: 0.5 } };
+        states[s.weekday.day] = { state: '09:20:00', attributes: {} };
+        states[s.weekday.night] = { state: '23:50:00', attributes: {} };
+        states[s.weekend.day] = { state: '10:00:00', attributes: {} };
+        states[s.weekend.night] = { state: '23:00:00', attributes: {} };
+      }
+
+      let language = 'sk';
+      const log = (msg) => (document.getElementById('log').textContent = msg + '\n' + document.getElementById('log').textContent);
+
+      const set = (id, patch) => {
+        const old = states[id];
+        states[id] = { ...old, ...patch, attributes: { ...old.attributes, ...(patch.attributes || {}) } };
+      };
+
+      function makeHass() {
+        const withIds = Object.fromEntries(Object.entries(states).map(([id, e]) => [id, { entity_id: id, ...e }]));
+        return {
+          states: withIds,
+          locale: { language },
+          language,
+          callService(domain, service, data) {
+            log(`${domain}.${service} ${JSON.stringify(data)}`);
+            setTimeout(() => {
+              const id = data.entity_id;
+              if (service === 'set_temperature') {
+                for (const c of ['climate.shelly_trv_1', 'climate.shelly_trv_2'].includes(id)
+                  ? ['climate.shelly_trv_1', 'climate.shelly_trv_2'] // simulate the sync automations
+                  : [id])
+                  set(c, { attributes: { temperature: data.temperature } });
+              } else if (service === 'toggle') set(id, { state: states[id].state === 'on' ? 'off' : 'on' });
+              else if (service === 'set_value') set(id, { state: String(data.value) });
+              else if (service === 'set_datetime') set(id, { state: data.time });
+              push();
+            }, 600);
+            return Promise.resolve();
+          },
+        };
+      }
+
+      const cards = configs.map((cfg) => {
+        const el = document.createElement('heating-room-card');
+        el.setConfig(cfg);
+        el.addEventListener('hass-more-info', (e) => log(`more-info ${e.detail.entityId}`));
+        document.getElementById('cards').appendChild(el);
+        return el;
+      });
+      function push() {
+        const hass = makeHass();
+        cards.forEach((c) => (c.hass = hass));
+      }
+      push();
+
+      const actions = ['idle', 'heating'];
+      document.getElementById('lang').onclick = () => ((language = language === 'sk' ? 'en' : 'sk'), push());
+      document.getElementById('trv1').onclick = () => {
+        const a = states['climate.shelly_trv_1'].attributes.hvac_action;
+        set('climate.shelly_trv_1', { attributes: { hvac_action: actions[(actions.indexOf(a) + 1) % 2] } });
+        push();
+      };
+      document.getElementById('boiler').onclick = () => {
+        set('switch.kotol_rele', { state: states['switch.kotol_rele'].state === 'on' ? 'off' : 'on' });
+        push();
+      };
+      document.getElementById('battery').onclick = () => {
+        set('sensor.trv_2_battery', { state: states['sensor.trv_2_battery'].state === '18' ? '80' : '18' });
+        push();
+      };
+      document.getElementById('off').onclick = () => {
+        set('climate.shelly_trv_2', { state: states['climate.shelly_trv_2'].state === 'off' ? 'heat' : 'off' });
+        push();
+      };
+    </script>
+  </body>
+</html>
