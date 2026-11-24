@@ -108,6 +108,7 @@ Labels are in Slovak when the HA language is Slovak, and in English otherwise.
 
 ## Behaviour notes
 
+- **− / + buttons:** each press moves the setpoint one step. The value is sent once, 1s after the last press.
 - **Dial:** it sends `climate.set_temperature` once, when you release. The value stays dimmed until HA confirms it, and reverts if HA hasn't confirmed within 10s.
 - **Schedule tick:** a tick on the dial marks the temperature the schedule expects right now. A `▲ plán X°` hint appears when the current setpoint differs from it. Both are hidden while the schedule is off.
 - **Schedule editor:** tap the schedule to open it. Save writes only the fields you changed, through `input_number.set_value` and `input_datetime.set_datetime`.

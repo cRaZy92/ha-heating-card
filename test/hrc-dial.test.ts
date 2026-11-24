@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../src/components/hrc-dial';
 import type { HrcDial } from '../src/components/hrc-dial';
 
@@ -25,7 +25,10 @@ function pointer(type: string, x: number, y: number) {
 }
 
 beforeEach(() => (document.body.innerHTML = ''));
-afterEach(() => el?.remove());
+afterEach(() => {
+  el?.remove();
+  vi.useRealTimers();
+});
 
 describe('hrc-dial', () => {
   it('pointerdown off-arc does nothing', async () => {
@@ -115,5 +118,78 @@ describe('hrc-dial', () => {
   it('pending dims the value', async () => {
     await mount({ pending: true });
     expect(el.shadowRoot!.querySelector('.target')!.classList.contains('pending')).toBe(true);
+  });
+
+  describe('+/- buttons', () => {
+    const press = async (which: 'plus' | 'minus', times = 1) => {
+      for (let i = 0; i < times; i++) (el.shadowRoot!.querySelector(`.buttons .${which}`) as HTMLElement).click();
+      await el.updateComplete;
+    };
+
+    it('updates the display immediately and emits once after 1s of no presses', async () => {
+      vi.useFakeTimers();
+      await mount();
+      await press('plus', 2);
+      expect(valueText()).toBe('18.5');
+      vi.advanceTimersByTime(999);
+      expect(events).toEqual([]);
+      vi.advanceTimersByTime(1);
+      expect(events).toEqual([18.5]);
+    });
+
+    it('each press restarts the 1s wait', async () => {
+      vi.useFakeTimers();
+      await mount();
+      await press('minus');
+      vi.advanceTimersByTime(800);
+      await press('minus');
+      vi.advanceTimersByTime(800);
+      expect(events).toEqual([]);
+      vi.advanceTimersByTime(200);
+      expect(events).toEqual([16.5]);
+    });
+
+    it('net zero change emits nothing', async () => {
+      vi.useFakeTimers();
+      await mount();
+      await press('plus');
+      await press('minus');
+      vi.advanceTimersByTime(1000);
+      expect(events).toEqual([]);
+    });
+
+    it('clamps at max and min', async () => {
+      vi.useFakeTimers();
+      await mount({ value: 29.5 });
+      await press('plus', 3);
+      vi.advanceTimersByTime(1000);
+      expect(events).toEqual([30]);
+    });
+
+    it('null value: + starts from min', async () => {
+      vi.useFakeTimers();
+      await mount({ value: null });
+      await press('plus');
+      vi.advanceTimersByTime(1000);
+      expect(events).toEqual([5.5]);
+    });
+
+    it('external value update while stepping is ignored', async () => {
+      vi.useFakeTimers();
+      await mount();
+      await press('plus');
+      el.value = 10;
+      await el.updateComplete;
+      expect(valueText()).toBe('18.0');
+      vi.advanceTimersByTime(1000);
+      expect(events).toEqual([18]);
+    });
+
+    it('buttons disabled when unavailable', async () => {
+      await mount({ status: 'unavailable' });
+      const buttons = [...el.shadowRoot!.querySelectorAll('.buttons button')] as HTMLButtonElement[];
+      expect(buttons.length).toBe(2);
+      expect(buttons.every((b) => b.disabled)).toBe(true);
+    });
   });
 });

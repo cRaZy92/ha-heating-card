@@ -1,6 +1,6 @@
 import { LitElement, html, svg, css, nothing } from 'lit';
 import { customElement, property, state, query } from 'lit/decorators.js';
-import { ARC_START_DEG, ARC_SWEEP_DEG, angleToValue, angularDistance, hitsArc, pointToAngle, tempColor, valueToAngle } from '../dial-math';
+import { ARC_START_DEG, ARC_SWEEP_DEG, angleToValue, angularDistance, hitsArc, pointToAngle, snap, tempColor, valueToAngle } from '../dial-math';
 import type { StatusKind } from '../status';
 
 const VB_W = 300;
@@ -12,6 +12,8 @@ const STROKE = 24;
 const HIT_TOLERANCE = 20;
 /** A drag only starts within this many degrees of the knob; the rest of the arc lets the page scroll. */
 const KNOB_GRAB_DEG = 30;
+/** +/- presses are batched: the value is sent once no button was pressed for this long. */
+const STEP_COMMIT_MS = 1000;
 
 function polar(angleDeg: number, r = R): [number, number] {
   const rad = (angleDeg * Math.PI) / 180;
@@ -40,8 +42,10 @@ export class HrcDial extends LitElement {
   @property({ type: Boolean }) pending = false;
   @property() decimal = '.';
 
+  /** Local value while dragging or stepping with +/-; overrides `value` until committed. */
   @state() private dragValue: number | null = null;
   private startValue: number | null = null;
+  private stepTimer?: ReturnType<typeof setTimeout>;
 
   @query('svg') private svgEl!: SVGSVGElement;
 
@@ -62,7 +66,34 @@ export class HrcDial extends LitElement {
     return angularDistance(pointToAngle(x, y, CX, CY), knobAngle) <= KNOB_GRAB_DEG;
   }
 
+  /** Ends a drag or a +/- burst: emits `hrc-change` once if the value actually changed. */
+  private commit() {
+    clearTimeout(this.stepTimer);
+    this.stepTimer = undefined;
+    if (this.dragValue === null) return;
+    const value = this.dragValue;
+    this.dragValue = null;
+    if (value !== this.startValue) {
+      this.dispatchEvent(new CustomEvent('hrc-change', { detail: { value }, bubbles: true, composed: true }));
+    }
+  }
+
+  private stepBy(dir: 1 | -1) {
+    if (this.dragValue === null) this.startValue = this.value;
+    const base = this.dragValue ?? this.value ?? this.min;
+    const next = snap(base + dir * this.step, this.step, this.min);
+    this.dragValue = Math.min(this.max, Math.max(this.min, next));
+    clearTimeout(this.stepTimer);
+    this.stepTimer = setTimeout(() => this.commit(), STEP_COMMIT_MS);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    this.commit(); // don't lose a +/- burst when the card is detached
+  }
+
   private onPointerDown = (e: PointerEvent) => {
+    if (this.stepTimer) this.commit();
     const [x, y] = this.toViewBox(e.clientX, e.clientY);
     if (!this.grabsKnob(x, y)) return;
     e.preventDefault();
@@ -83,12 +114,8 @@ export class HrcDial extends LitElement {
   };
 
   private onPointerUp = () => {
-    if (this.dragValue === null) return;
-    const value = this.dragValue;
-    this.dragValue = null;
-    if (value !== this.startValue) {
-      this.dispatchEvent(new CustomEvent('hrc-change', { detail: { value }, bubbles: true, composed: true }));
-    }
+    if (this.stepTimer) return; // a +/- burst is in progress; its timer commits
+    this.commit();
   };
 
   /** Block page scroll only for touches that start on the arc (backup for browsers ignoring touch-action on SVG). */
@@ -162,6 +189,14 @@ export class HrcDial extends LitElement {
             ${this.current !== null ? `${this.fmt(this.current, true)} °C` : '—'}
           </div>
           ${showHint ? html`<div class="hint">▲ ${this.hintLabel} ${this.fmt(this.expected!, false)}°</div>` : nothing}
+        </div>
+        <div class="buttons">
+          <button class="minus" aria-label="−" ?disabled=${this.status === 'unavailable'} @click=${() => this.stepBy(-1)}>
+            <ha-icon icon="mdi:minus"></ha-icon>
+          </button>
+          <button class="plus" aria-label="+" ?disabled=${this.status === 'unavailable'} @click=${() => this.stepBy(1)}>
+            <ha-icon icon="mdi:plus"></ha-icon>
+          </button>
         </div>
       </div>
     `;
@@ -266,6 +301,43 @@ export class HrcDial extends LitElement {
     .unit {
       font-size: 0.33em;
       line-height: var(--ha-line-height-condensed, 1.2);
+    }
+    /* HA thermostat buttons: 48px outlined icon buttons, 24px apart, in the gap below the arc. */
+    .buttons {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      pointer-events: none;
+    }
+    .buttons button {
+      pointer-events: auto;
+      width: 48px;
+      height: 48px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      border: 1px solid var(--outline-color, rgba(127, 127, 127, 0.5));
+      background: transparent;
+      color: var(--primary-text-color);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: background-color 0.15s ease;
+    }
+    .buttons button:active {
+      background: rgba(127, 127, 127, 0.2);
+    }
+    .buttons button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+    .buttons ha-icon {
+      --mdc-icon-size: 24px;
     }
     .target.pending {
       opacity: 0.5;
