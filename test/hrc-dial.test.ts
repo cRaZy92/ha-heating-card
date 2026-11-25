@@ -31,6 +31,14 @@ afterEach(() => {
 });
 
 describe('hrc-dial', () => {
+  it('shows humidity next to the current temperature only when given', async () => {
+    await mount();
+    expect(el.shadowRoot!.querySelector('.humidity')).toBeNull();
+    el.humidity = 48.6;
+    await el.updateComplete;
+    expect(el.shadowRoot!.querySelector('.humidity')!.textContent).toContain('49%');
+  });
+
   it('pointerdown off-arc does nothing', async () => {
     await mount();
     pointer('pointerdown', 150, 150);

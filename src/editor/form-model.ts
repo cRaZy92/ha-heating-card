@@ -21,7 +21,7 @@ export interface ScheduleForm {
   weekend_night?: string;
 }
 
-const KEY_ORDER = ['type', 'name', 'icon', 'climate', 'boiler', 'trvs', 'schedule', 'show_battery', 'battery_warning'];
+const KEY_ORDER = ['type', 'name', 'icon', 'climate', 'boiler', 'temperature', 'humidity', 'trvs', 'schedule', 'show_battery', 'battery_warning'];
 
 const HELPER_SUFFIX: [path: string, entity: (p: string) => string][] = [
   ['enabled', (p) => `input_boolean.${p}_on_off`],

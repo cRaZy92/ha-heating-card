@@ -66,6 +66,8 @@
         <button id="boiler">Toggle boiler</button>
         <button id="battery">Low battery TRV 2</button>
         <button id="off">Toggle TRV 2 off</button>
+        <button id="offline">Toggle TRV 1 offline</button>
+        <button id="desync">Desync TRV 1 (badge after 3 min)</button>
       </div>
       <div id="cards"></div>
       <div id="log"></div>
@@ -120,6 +122,8 @@
           name: 'Spálňa',
           icon: 'mdi:bed',
           boiler: 'switch.kotol_rele',
+          temperature: 'sensor.spalna_temperature',
+          humidity: 'sensor.spalna_humidity',
           trvs: [{ climate: 'climate.shelly_trv_3', valve: 'sensor.valve_spalna', battery: 'sensor.trv_3_battery' }],
           schedule: schedule('trv_spalna'),
         },
@@ -143,6 +147,8 @@
         'sensor.trv_1_battery': { state: '92', attributes: {} },
         'sensor.trv_2_battery': { state: '80', attributes: {} },
         'sensor.trv_3_battery': { state: '64', attributes: {} },
+        'sensor.spalna_temperature': { state: '19.4', attributes: {} },
+        'sensor.spalna_humidity': { state: '52', attributes: {} },
       };
       for (const p of ['trv_izba', 'trv_spalna']) {
         const s = schedule(p);
@@ -210,6 +216,15 @@
       };
       document.getElementById('boiler').onclick = () => {
         set('switch.kotol_rele', { state: states['switch.kotol_rele'].state === 'on' ? 'off' : 'on' });
+        push();
+      };
+      document.getElementById('offline').onclick = () => {
+        set('climate.shelly_trv_1', { state: states['climate.shelly_trv_1'].state === 'unavailable' ? 'heat' : 'unavailable' });
+        push();
+      };
+      document.getElementById('desync').onclick = () => {
+        const t = states['climate.shelly_trv_1'].attributes.temperature;
+        set('climate.shelly_trv_1', { attributes: { temperature: t + 1 } });
         push();
       };
       document.getElementById('battery').onclick = () => {

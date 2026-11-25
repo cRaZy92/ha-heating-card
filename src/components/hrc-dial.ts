@@ -35,6 +35,7 @@ export class HrcDial extends LitElement {
   @property({ type: Number }) max = 30;
   @property({ type: Number }) step = 0.5;
   @property({ type: Number }) current: number | null = null;
+  @property({ type: Number }) humidity: number | null = null;
   @property() status: StatusKind = 'idle';
   @property() statusLabel = '';
   @property({ type: Number }) expected: number | null = null;
@@ -191,6 +192,9 @@ export class HrcDial extends LitElement {
           <div class="current">
             <ha-icon icon="mdi:thermometer"></ha-icon>
             ${this.current !== null ? `${this.fmt(this.current, true)} °C` : '—'}
+            ${this.humidity !== null
+              ? html`<span class="humidity"><ha-icon icon="mdi:water-percent"></ha-icon>${Math.round(this.humidity)}%</span>`
+              : nothing}
           </div>
           ${showHint ? html`<div class="hint">▲ ${this.hintLabel} ${this.fmt(this.expected!, false)}°</div>` : nothing}
         </div>
@@ -356,6 +360,13 @@ export class HrcDial extends LitElement {
     }
     .current ha-icon {
       --mdc-icon-size: 18px;
+    }
+    .humidity {
+      display: inline-flex;
+      align-items: center;
+      gap: 1px;
+      margin-left: 8px;
+      color: var(--secondary-text-color);
     }
     .hint {
       font-size: 12px;

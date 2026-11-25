@@ -283,6 +283,89 @@ describe('heating-room-card', () => {
     expect(ids).toEqual(['sensor.shelly_trv_2_battery']);
   });
 
+  it('offline secondary TRV shows a badge that opens its more-info', async () => {
+    await mount(twoTrvConfig, twoTrvHass({ 'climate.shelly_trv_1': ['unavailable', {}] }));
+    expect($$('.alert-chip.offline').length).toBe(1);
+    expect($('.alert-chip.offline').textContent).toContain('Offline');
+    const ids: string[] = [];
+    card.addEventListener('hass-more-info', (e) => ids.push((e as CustomEvent).detail.entityId));
+    $('.alert-chip.offline').click();
+    expect(ids).toEqual(['climate.shelly_trv_1']);
+  });
+
+  it('no offline badge for the dial TRV (status says it) or when all are up', async () => {
+    await mount(twoTrvConfig, twoTrvHass({ 'climate.shelly_trv_2': ['unavailable', {}] }));
+    expect($$('.alert-chip').length).toBe(0);
+    expect(dial().status).toBe('unavailable');
+    document.body.innerHTML = '';
+    await mount(twoTrvConfig, twoTrvHass());
+    expect($$('.alert-chip').length).toBe(0);
+  });
+
+  it('out-of-sync badge only after the setpoints differ for 3 minutes', async () => {
+    vi.useFakeTimers();
+    await mount(twoTrvConfig, twoTrvHass());
+    card.hass = twoTrvHass({ 'climate.shelly_trv_2': ['heat', climateAttrs(23)] });
+    await card.updateComplete;
+    vi.advanceTimersByTime(179_999);
+    await card.updateComplete;
+    expect($$('.alert-chip.sync').length).toBe(0);
+    vi.advanceTimersByTime(1);
+    await card.updateComplete;
+    expect($$('.alert-chip.sync').length).toBe(1);
+    const ids: string[] = [];
+    card.addEventListener('hass-more-info', (e) => ids.push((e as CustomEvent).detail.entityId));
+    $('.alert-chip.sync').click();
+    expect(ids).toEqual(['climate.shelly_trv_1']);
+    // The sync automation catches up: the badge goes away.
+    card.hass = twoTrvHass({ 'climate.shelly_trv_1': ['heat', climateAttrs(23)], 'climate.shelly_trv_2': ['heat', climateAttrs(23)] });
+    await card.updateComplete;
+    expect($$('.alert-chip.sync').length).toBe(0);
+  });
+
+  it('a mismatch that resolves within the grace period never shows a badge', async () => {
+    vi.useFakeTimers();
+    await mount(twoTrvConfig, twoTrvHass());
+    card.hass = twoTrvHass({ 'climate.shelly_trv_2': ['heat', climateAttrs(23)] });
+    await card.updateComplete;
+    vi.advanceTimersByTime(60_000);
+    card.hass = twoTrvHass({ 'climate.shelly_trv_1': ['heat', climateAttrs(23)], 'climate.shelly_trv_2': ['heat', climateAttrs(23)] });
+    await card.updateComplete;
+    vi.advanceTimersByTime(600_000);
+    await card.updateComplete;
+    expect($$('.alert-chip.sync').length).toBe(0);
+  });
+
+  it('off or offline TRVs never count as out of sync', async () => {
+    vi.useFakeTimers();
+    await mount(twoTrvConfig, twoTrvHass({ 'climate.shelly_trv_1': ['off', climateAttrs(null)] }));
+    vi.advanceTimersByTime(600_000);
+    await card.updateComplete;
+    expect($$('.alert-chip.sync').length).toBe(0);
+  });
+
+  it('room temperature and humidity sensors reach the dial', async () => {
+    const config = { ...twoTrvConfig, temperature: 'sensor.room_temp', humidity: 'sensor.room_hum' };
+    await mount(config, twoTrvHass({ 'sensor.room_temp': ['20.3'], 'sensor.room_hum': ['48.6'] }));
+    expect(dial().current).toBe(20.3);
+    expect(dial().humidity).toBe(48.6);
+    // Re-renders when only the room sensor changes.
+    card.hass = twoTrvHass({ 'sensor.room_temp': ['20.8'], 'sensor.room_hum': ['48.6'] });
+    await card.updateComplete;
+    expect(dial().current).toBe(20.8);
+  });
+
+  it('falls back to the TRV reading when the room sensor is unavailable', async () => {
+    const config = { ...twoTrvConfig, temperature: 'sensor.room_temp', humidity: 'sensor.room_hum' };
+    await mount(config, twoTrvHass({ 'sensor.room_temp': ['unavailable'], 'sensor.room_hum': ['unavailable'] }));
+    expect(dial().current).toBe(21.7);
+    expect(dial().humidity).toBeNull();
+    document.body.innerHTML = '';
+    await mount(twoTrvConfig, twoTrvHass());
+    expect(dial().current).toBe(21.7);
+    expect(dial().humidity).toBeNull();
+  });
+
   it('missing entities do not throw', async () => {
     await mount(twoTrvConfig, makeHass({ 'climate.shelly_trv_2': ['heat', climateAttrs(21)] }));
     expect(card.shadowRoot!.textContent).toContain('—');

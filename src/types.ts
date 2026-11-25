@@ -36,6 +36,10 @@ export interface CardConfig {
   icon?: string;
   climate?: string;
   boiler?: string;
+  /** Room temperature sensor; shown instead of the TRV's own reading. */
+  temperature?: string;
+  /** Room humidity sensor. */
+  humidity?: string;
   trvs: TrvConfig[];
   schedule: ScheduleConfig;
   battery_warning?: number;

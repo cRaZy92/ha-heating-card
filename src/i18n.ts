@@ -19,6 +19,10 @@ export type I18nKey =
   | 'ed_name'
   | 'ed_icon'
   | 'ed_boiler'
+  | 'ed_temperature'
+  | 'ed_humidity'
+  | 'trv_offline'
+  | 'trv_out_of_sync'
   | 'ed_trvs'
   | 'ed_trv'
   | 'ed_climate'
@@ -65,6 +69,10 @@ const en: Record<I18nKey, string> = {
   ed_name: 'Name',
   ed_icon: 'Icon',
   ed_boiler: 'Boiler switch',
+  ed_temperature: 'Room temperature sensor',
+  ed_humidity: 'Room humidity sensor',
+  trv_offline: 'Offline',
+  trv_out_of_sync: 'Out of sync',
   ed_trvs: 'Radiator valves (TRV)',
   ed_trv: 'TRV',
   ed_climate: 'Thermostat',
@@ -112,6 +120,10 @@ const sk: Record<I18nKey, string> = {
   ed_name: 'Názov',
   ed_icon: 'Ikona',
   ed_boiler: 'Spínač kotla',
+  ed_temperature: 'Snímač teploty v miestnosti',
+  ed_humidity: 'Snímač vlhkosti v miestnosti',
+  trv_offline: 'Odpojená',
+  trv_out_of_sync: 'Nesúlad',
   ed_trvs: 'Termostatické hlavice (TRV)',
   ed_trv: 'Hlavica',
   ed_climate: 'Termostat',

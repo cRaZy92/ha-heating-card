@@ -41,7 +41,7 @@ New versions then show up as updates in **Settings → Updates**.
 
 Add the card from the dashboard's card picker (**Heating Room Card**) and fill in the editor:
 
-- **General:** name, icon and the boiler switch.
+- **General:** name, icon, the boiler switch, and optional room temperature and humidity sensors.
 - **Radiator valves (TRV):** add one row per TRV with its thermostat, valve-position sensor and battery sensor.
   With two or more TRVs, pick which one the dial controls; your sync automations keep the others in step.
 - **Schedule:** use **Fill from helpers** and pick your helper prefix (for example `trv_izba`). It fills in
@@ -111,6 +111,8 @@ schedule:
 | `schedule.*` | yes | — | The `enabled` boolean, the `night_temp`/`day_temp` numbers, and the `weekday`/`weekend` `day`/`night` datetimes (time only). |
 | `climate` | no | `trvs[0].climate` | The TRV whose setpoint the dial reads and writes. |
 | `boiler` | no | — | Boiler relay switch. Without it, a TRV calling for heat shows **Heating**. |
+| `temperature` | no | — | Room temperature sensor. The dial shows it instead of the TRV's own reading, which is skewed by the radiator. Falls back to the TRV when the sensor is unavailable. |
+| `humidity` | no | — | Room humidity sensor, shown next to the current temperature. |
 | `name` | no | the climate's friendly name | Room name. |
 | `icon` | no | `mdi:radiator` | Room icon. It is tinted when the schedule is on. |
 | `battery_warning` | no | `25` | Batteries below this % are highlighted in red. |
@@ -134,6 +136,10 @@ Labels are in Slovak when the HA language is Slovak, and in English otherwise.
 - **Dial:** it sends `climate.set_temperature` once, when you release. The value stays dimmed until HA confirms it, and goes back to the real value if HA reports a different setpoint or hasn't confirmed within 60s (battery TRVs can take a while to report).
 - **Schedule tick:** a tick on the dial marks the temperature the schedule expects right now. A `▲ plán X°` hint appears when the current setpoint differs from it. Both are hidden while the schedule is off.
 - **Schedule editor:** tap the schedule to open it. Save writes only the fields you changed, through `input_number.set_value` and `input_datetime.set_datetime`.
+- **TRV warnings:** in rooms with several TRVs, badges in the dial's top-left corner flag a TRV that is
+  *Offline* (unavailable in HA), and *Out of sync* when another TRV's setpoint has differed from the
+  dial's TRV for 3 minutes, which usually means a sync automation failed. A TRV that is off is not
+  compared. Tap a badge to open that TRV.
 - **Errors:** if any call to HA fails (setpoint, On/Off, schedule save), the dial reverts to the real value immediately and the card shows *Nepodarilo sa uložiť* / *Couldn't save* for 5s. The failure is logged to the console as a warning, and there are no unhandled errors.
 
 ## Releasing

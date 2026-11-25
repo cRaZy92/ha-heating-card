@@ -131,6 +131,17 @@ describe('heating-room-card-editor', () => {
     expect(form('schedule').data.enabled).toBe(schedule.enabled);
   });
 
+  it('general form sets the room temperature and humidity sensors', () => {
+    const sel = (f: any, name: string) => f.schema.flatMap((s: any) => s.schema ?? [s]).find((s: any) => s.name === name).selector;
+    const temp = sel(form('general'), 'temperature');
+    expect(temp.entity.filter).toEqual({ domain: 'sensor', device_class: 'temperature' });
+    expect(sel(form('general'), 'humidity').entity.filter).toEqual({ domain: 'sensor', device_class: 'humidity' });
+    emit(form('general'), { name: 'Tech. Izba', temperature: 'sensor.room_temp', humidity: 'sensor.room_hum' });
+    expect(last().temperature).toBe('sensor.room_temp');
+    expect(last().humidity).toBe('sensor.room_hum');
+    expect(Object.keys(last()).slice(0, 5)).toEqual(['type', 'name', 'climate', 'temperature', 'humidity']);
+  });
+
   it('display changes', () => {
     emit(form('display'), { show_battery: 'always', battery_warning: 30 });
     expect(last().show_battery).toBe('always');

@@ -8,6 +8,7 @@ import { normalizeConfig } from './config';
 import './editor/heating-room-card-editor';
 import { configProblems, stubConfig } from './editor/form-model';
 import { evaluateStatus, type StatusKind } from './status';
+import { offlineTrvs, outOfSyncTrvs } from './health';
 import { expectedTemp, formatTime, readSchedule } from './schedule';
 import { decimalSeparator, t, type I18nKey } from './i18n';
 import type { Hass, HassEntity, NormalizedConfig } from './types';
@@ -19,6 +20,11 @@ import type { Hass, HassEntity, NormalizedConfig } from './types';
 const PENDING_TIMEOUT_MS = 60_000;
 const NOW_REFRESH_MS = 60_000;
 const ERROR_VISIBLE_MS = 5_000;
+/**
+ * How long the TRVs' setpoints may differ before the card flags it. Sync automations and battery
+ * TRVs need a while to catch up after every change, so a short mismatch is normal.
+ */
+const SYNC_GRACE_MS = 3 * 60_000;
 
 const STATUS_KEY: Record<StatusKind, I18nKey> = {
   unavailable: 'status_unavailable',
@@ -78,6 +84,9 @@ export class HeatingRoomCard extends LitElement {
   @state() private errorVisible = false;
   /** Set instead of `config` while the config is incomplete or invalid. */
   @state() private setup?: { missing: string[]; error?: string };
+  /** TRVs whose setpoint has differed from the dial's TRV for longer than SYNC_GRACE_MS. */
+  @state() private outOfSync: string[] = [];
+  private syncTimer?: ReturnType<typeof setTimeout>;
 
   private pendingTimer?: ReturnType<typeof setTimeout>;
   private nowTimer?: ReturnType<typeof setInterval>;
@@ -117,6 +126,7 @@ export class HeatingRoomCard extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     this.nowTimer = setInterval(() => (this.now = new Date()), NOW_REFRESH_MS);
+    this.checkSync();
   }
 
   disconnectedCallback() {
@@ -125,6 +135,7 @@ export class HeatingRoomCard extends LitElement {
     clearTimeout(this.errorTimer);
     this.errorVisible = false;
     this.clearPending();
+    this.clearSync();
   }
 
   /** Only re-render when an entity this card uses actually changed. */
@@ -141,6 +152,29 @@ export class HeatingRoomCard extends LitElement {
     if (changed.has('hass') && this.pendingValue !== null && this.config && this.targetTemp() !== this.pendingFrom) {
       this.clearPending();
     }
+    if (changed.has('hass') || changed.has('config')) this.checkSync();
+  }
+
+  private clearSync() {
+    clearTimeout(this.syncTimer);
+    this.syncTimer = undefined;
+    this.outOfSync = [];
+  }
+
+  /** Flags TRVs as out of sync once their setpoints have differed for SYNC_GRACE_MS. */
+  private checkSync() {
+    if (!this.config || !this.hass) return this.clearSync();
+    const ids = outOfSyncTrvs(this.hass, this.config);
+    if (ids.length === 0) return this.clearSync();
+    if (this.outOfSync.length > 0) {
+      // Already flagged: keep the list current, without waiting again.
+      if (ids.join() !== this.outOfSync.join()) this.outOfSync = ids;
+      return;
+    }
+    this.syncTimer ??= setTimeout(() => {
+      this.syncTimer = undefined;
+      this.outOfSync = this.config && this.hass ? outOfSyncTrvs(this.hass, this.config) : [];
+    }, SYNC_GRACE_MS);
   }
 
   private watchedEntities(): string[] {
@@ -148,7 +182,7 @@ export class HeatingRoomCard extends LitElement {
     const s = c.schedule;
     return [
       c.climate,
-      ...(c.boiler ? [c.boiler] : []),
+      ...[c.boiler, c.temperature, c.humidity].filter((x): x is string => !!x),
       ...c.trvs.flatMap((trv) => [trv.climate, trv.valve, trv.battery].filter((x): x is string => !!x)),
       s.enabled,
       s.night_temp,
@@ -272,9 +306,36 @@ export class HeatingRoomCard extends LitElement {
     `;
   }
 
+  /** Badges in the dial's top-left corner: offline TRVs, out-of-sync TRVs, then batteries. */
+  private renderBadges() {
+    const offline = offlineTrvs(this.hass!, this.config!);
+    const name = (id: string) => this.entity(id)?.attributes?.friendly_name ?? id;
+    const alerts = [
+      ...offline.map(
+        (id) => html`<button class="alert-chip offline" title=${name(id)} @click=${() => this.moreInfo(id)}>
+          <ha-icon icon="mdi:radiator-off"></ha-icon>${t(this.hass, 'trv_offline')}
+        </button>`,
+      ),
+      ...(this.outOfSync.length
+        ? [
+            html`<button
+              class="alert-chip sync"
+              title=${this.outOfSync.map(name).join(', ')}
+              @click=${() => this.moreInfo(this.outOfSync[0])}
+            >
+              <ha-icon icon="mdi:sync-alert"></ha-icon>${t(this.hass, 'trv_out_of_sync')}
+            </button>`,
+          ]
+        : []),
+    ];
+    const batteries = this.renderBatteries();
+    if (alerts.length === 0 && batteries.length === 0) return nothing;
+    return html`<div class="badges">${alerts}${batteries}</div>`;
+  }
+
   /**
-   * Battery chips in the dial's top-left corner. `low` (default): only the lowest battery below
-   * `battery_warning`. `always`: every TRV battery, low ones highlighted.
+   * Battery chips. `low` (default): only the lowest battery below `battery_warning`.
+   * `always`: every TRV battery, low ones highlighted.
    */
   private renderBatteries() {
     const c = this.config!;
@@ -289,15 +350,11 @@ export class HeatingRoomCard extends LitElement {
       const lowest = levels.filter((b) => low(b.level)).sort((a, b) => a.level - b.level)[0];
       shown = lowest ? [lowest] : [];
     }
-    if (shown.length === 0) return nothing;
-
-    return html`<div class="batteries">
-      ${shown.map(
-        ({ id, level }) => html`<button class="battery-chip ${low(level) ? 'low' : ''}" @click=${() => this.moreInfo(id)}>
-          <ha-icon icon=${batteryIcon(level, low(level))}></ha-icon>${Math.round(level)}%
-        </button>`,
-      )}
-    </div>`;
+    return shown.map(
+      ({ id, level }) => html`<button class="battery-chip ${low(level) ? 'low' : ''}" @click=${() => this.moreInfo(id)}>
+        <ha-icon icon=${batteryIcon(level, low(level))}></ha-icon>${Math.round(level)}%
+      </button>`,
+    );
   }
 
   private renderSetup(setup: { missing: string[]; error?: string }) {
@@ -325,6 +382,8 @@ export class HeatingRoomCard extends LitElement {
     const decimal = decimalSeparator(hass);
     const name = c.name ?? climate?.attributes?.friendly_name ?? c.climate;
     const value = this.pendingValue ?? this.targetTemp();
+    // The room sensor wins when it has a reading; otherwise fall back to the TRV's own.
+    const current = numState(this.entity(c.temperature)) ?? numAttr(climate, 'current_temperature');
 
     return html`
       <ha-card>
@@ -335,13 +394,14 @@ export class HeatingRoomCard extends LitElement {
             </div>`
           : nothing}
         <div class="dial-wrap">
-        ${this.renderBatteries()}
+        ${this.renderBadges()}
         <hrc-dial
           .value=${value}
           .min=${numAttr(climate, 'min_temp') ?? 5}
           .max=${numAttr(climate, 'max_temp') ?? 30}
           .step=${numAttr(climate, 'target_temp_step') ?? 0.5}
-          .current=${numAttr(climate, 'current_temperature')}
+          .current=${current}
+          .humidity=${numState(this.entity(c.humidity))}
           .status=${status}
           .statusLabel=${t(hass, STATUS_KEY[status])}
           .expected=${expectedTemp(schedule, this.now)}
@@ -459,7 +519,8 @@ export class HeatingRoomCard extends LitElement {
     }
     .pill ha-icon,
     .valve-chip ha-icon,
-    .battery-chip ha-icon {
+    .battery-chip ha-icon,
+    .alert-chip ha-icon {
       --mdc-icon-size: 18px;
     }
     .valve-chip {
@@ -495,7 +556,7 @@ export class HeatingRoomCard extends LitElement {
     .dial-wrap {
       position: relative;
     }
-    .batteries {
+    .badges {
       position: absolute;
       top: 4px;
       left: 6px;
@@ -505,7 +566,8 @@ export class HeatingRoomCard extends LitElement {
       align-items: flex-start;
       gap: 2px;
     }
-    .battery-chip {
+    .battery-chip,
+    .alert-chip {
       display: inline-flex;
       align-items: center;
       gap: 2px;
@@ -514,7 +576,11 @@ export class HeatingRoomCard extends LitElement {
       font-weight: 500;
       color: var(--secondary-text-color);
     }
-    .battery-chip.low {
+    .alert-chip.sync {
+      color: var(--warning-color, #ffa600);
+    }
+    .battery-chip.low,
+    .alert-chip.offline {
       color: var(--error-color, #db4437);
     }
   `;

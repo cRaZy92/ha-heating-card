@@ -25,6 +25,14 @@ const GENERAL_SCHEMA = [
   { name: 'name', selector: { text: {} } },
   { name: 'icon', selector: { icon: { placeholder: 'mdi:radiator' } } },
   { name: 'boiler', selector: entity({ domain: ['switch', 'input_boolean'] }) },
+  {
+    name: '',
+    type: 'grid',
+    schema: [
+      { name: 'temperature', selector: entity({ domain: 'sensor', device_class: 'temperature' }) },
+      { name: 'humidity', selector: entity({ domain: 'sensor', device_class: 'humidity' }) },
+    ],
+  },
 ];
 
 const TRV_SCHEMA = [
@@ -59,6 +67,8 @@ const LABEL: Record<string, I18nKey> = {
   name: 'ed_name',
   icon: 'ed_icon',
   boiler: 'ed_boiler',
+  temperature: 'ed_temperature',
+  humidity: 'ed_humidity',
   climate: 'ed_climate',
   valve: 'ed_valve',
   battery: 'ed_battery',
@@ -138,8 +148,15 @@ export class HeatingRoomCardEditor extends LitElement {
     ></ha-form>`;
   }
 
-  private onGeneral(v: { name?: string; icon?: string; boiler?: string }) {
-    this.change({ ...this.config, name: v.name, icon: v.icon, boiler: v.boiler });
+  private onGeneral(v: { name?: string; icon?: string; boiler?: string; temperature?: string; humidity?: string }) {
+    this.change({
+      ...this.config,
+      name: v.name,
+      icon: v.icon,
+      boiler: v.boiler,
+      temperature: v.temperature,
+      humidity: v.humidity,
+    });
   }
 
   private onDisplay(v: { show_battery?: 'low' | 'always'; battery_warning?: number }) {
@@ -170,7 +187,12 @@ export class HeatingRoomCardEditor extends LitElement {
     const primary = c.climate && named.some((trv) => trv.climate === c.climate) ? c.climate : named[0]?.climate;
 
     return html`
-      ${this.form('general', { name: c.name, icon: c.icon, boiler: c.boiler }, GENERAL_SCHEMA, (v) => this.onGeneral(v))}
+      ${this.form(
+        'general',
+        { name: c.name, icon: c.icon, boiler: c.boiler, temperature: c.temperature, humidity: c.humidity },
+        GENERAL_SCHEMA,
+        (v) => this.onGeneral(v),
+      )}
 
       <h3>${t(this.hass, 'ed_trvs')}</h3>
       ${trvs.map(
