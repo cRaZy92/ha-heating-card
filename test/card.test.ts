@@ -101,12 +101,39 @@ describe('heating-room-card', () => {
     expect(dial().value).toBe(22);
   });
 
-  it('pending reverts after 10s without confirmation', async () => {
+  it('pending survives a slow TRV that confirms after 25s', async () => {
+    vi.useFakeTimers();
+    await mount(twoTrvConfig, twoTrvHass());
+    dial().dispatchEvent(new CustomEvent('hrc-change', { detail: { value: 10 } }));
+    await card.updateComplete;
+    vi.advanceTimersByTime(25_000);
+    // An unrelated update for the same TRV (still the old setpoint) must not drop the pending value.
+    card.hass = twoTrvHass({ 'climate.shelly_trv_2': ['heat', climateAttrs(21.5, 'heating')] });
+    await card.updateComplete;
+    expect(dial().pending).toBe(true);
+    expect(dial().value).toBe(10);
+    card.hass = twoTrvHass({ 'climate.shelly_trv_2': ['heat', climateAttrs(10)] });
+    await card.updateComplete;
+    expect(dial().pending).toBe(false);
+    expect(dial().value).toBe(10);
+  });
+
+  it('pending is dropped when the setpoint is changed elsewhere', async () => {
+    await mount(twoTrvConfig, twoTrvHass());
+    dial().dispatchEvent(new CustomEvent('hrc-change', { detail: { value: 22 } }));
+    await card.updateComplete;
+    card.hass = twoTrvHass({ 'climate.shelly_trv_2': ['heat', climateAttrs(18)] });
+    await card.updateComplete;
+    expect(dial().pending).toBe(false);
+    expect(dial().value).toBe(18);
+  });
+
+  it('pending reverts after 60s without confirmation', async () => {
     vi.useFakeTimers();
     await mount(twoTrvConfig, twoTrvHass());
     dial().dispatchEvent(new CustomEvent('hrc-change', { detail: { value: 22 } }));
     await card.updateComplete;
-    vi.advanceTimersByTime(9_999);
+    vi.advanceTimersByTime(59_999);
     await card.updateComplete;
     expect(dial().pending).toBe(true);
     vi.advanceTimersByTime(1);

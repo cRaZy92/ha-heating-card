@@ -12,7 +12,11 @@ import { expectedTemp, formatTime, readSchedule } from './schedule';
 import { decimalSeparator, t, type I18nKey } from './i18n';
 import type { Hass, HassEntity, NormalizedConfig } from './types';
 
-const PENDING_TIMEOUT_MS = 10_000;
+/**
+ * Safety net only: battery TRVs (e.g. Shelly BLU) can take tens of seconds to report a new
+ * setpoint, so a pending value normally ends when HA reports a changed setpoint, not on a timer.
+ */
+const PENDING_TIMEOUT_MS = 60_000;
 const NOW_REFRESH_MS = 60_000;
 const ERROR_VISIBLE_MS = 5_000;
 
@@ -67,6 +71,8 @@ export class HeatingRoomCard extends LitElement {
   @property({ attribute: false }) hass?: Hass;
   @state() private config?: NormalizedConfig;
   @state() private pendingValue: number | null = null;
+  /** The setpoint HA reported when the pending value was set; any other report ends pending. */
+  private pendingFrom: number | null = null;
   @state() private editorOpen = false;
   @state() private now = new Date();
   @state() private errorVisible = false;
@@ -130,7 +136,9 @@ export class HeatingRoomCard extends LitElement {
   }
 
   protected willUpdate(changed: PropertyValues) {
-    if (changed.has('hass') && this.pendingValue !== null && this.targetTemp() === this.pendingValue) {
+    // Ends on HA confirming our value, or on the setpoint being changed elsewhere (or the TRV going
+    // off/unavailable). An update that still shows the old setpoint keeps the pending value.
+    if (changed.has('hass') && this.pendingValue !== null && this.config && this.targetTemp() !== this.pendingFrom) {
       this.clearPending();
     }
   }
@@ -166,6 +174,7 @@ export class HeatingRoomCard extends LitElement {
     clearTimeout(this.pendingTimer);
     this.pendingTimer = undefined;
     this.pendingValue = null;
+    this.pendingFrom = null;
   }
 
   /**
@@ -202,12 +211,14 @@ export class HeatingRoomCard extends LitElement {
 
   private async onDialChange(e: CustomEvent<{ value: number }>) {
     const value = e.detail.value;
-    if (value === this.targetTemp()) {
+    const reported = this.targetTemp();
+    if (value === reported) {
       // HA already reports this value, so no confirming update will arrive — don't mark it pending.
       this.clearPending();
     } else {
       clearTimeout(this.pendingTimer);
       this.pendingValue = value;
+      this.pendingFrom = reported;
       this.pendingTimer = setTimeout(() => this.clearPending(), PENDING_TIMEOUT_MS);
     }
     const ok = await this.call('climate', 'set_temperature', { entity_id: this.config!.climate, temperature: value });
