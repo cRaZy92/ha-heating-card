@@ -185,6 +185,18 @@ describe('hrc-dial', () => {
       expect(events).toEqual([18]);
     });
 
+    it('hovering over the arc after a press does not drag the value', async () => {
+      vi.useFakeTimers();
+      await mount({ value: 17 });
+      await press('minus');
+      pointer('pointermove', 30, 150); // mouse moves across the left of the arc, no button held
+      pointer('pointermove', 60, 230);
+      await el.updateComplete;
+      expect(valueText()).toBe('16.5');
+      vi.advanceTimersByTime(1000);
+      expect(events).toEqual([16.5]);
+    });
+
     it('buttons disabled when unavailable', async () => {
       await mount({ status: 'unavailable' });
       const buttons = [...el.shadowRoot!.querySelectorAll('.buttons button')] as HTMLButtonElement[];

@@ -45,6 +45,8 @@ export class HrcDial extends LitElement {
   /** Local value while dragging or stepping with +/-; overrides `value` until committed. */
   @state() private dragValue: number | null = null;
   private startValue: number | null = null;
+  /** True only while a pointer that grabbed the knob is held down. */
+  private dragging = false;
   private stepTimer?: ReturnType<typeof setTimeout>;
 
   @query('svg') private svgEl!: SVGSVGElement;
@@ -102,19 +104,21 @@ export class HrcDial extends LitElement {
     } catch {
       /* not supported (tests) */
     }
+    this.dragging = true;
     this.startValue = this.value;
     this.dragValue = this.value ?? this.min; // no jump on touch; only movement changes the value
   };
 
   private onPointerMove = (e: PointerEvent) => {
-    if (this.dragValue === null) return;
+    if (!this.dragging) return; // hover, or a +/- burst pending: not a drag
     e.preventDefault();
     const [x, y] = this.toViewBox(e.clientX, e.clientY);
     this.dragValue = this.valueAt(x, y, this.dragValue);
   };
 
   private onPointerUp = () => {
-    if (this.stepTimer) return; // a +/- burst is in progress; its timer commits
+    if (!this.dragging) return; // a +/- burst commits via its timer
+    this.dragging = false;
     this.commit();
   };
 
