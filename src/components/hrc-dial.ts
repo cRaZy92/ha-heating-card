@@ -110,7 +110,7 @@ export class HrcDial extends LitElement {
   };
 
   private onPointerMove = (e: PointerEvent) => {
-    if (!this.dragging) return; // hover, or a +/- burst pending: not a drag
+    if (!this.dragging || this.dragValue === null) return; // hover, or a +/- burst pending: not a drag
     e.preventDefault();
     const [x, y] = this.toViewBox(e.clientX, e.clientY);
     this.dragValue = this.valueAt(x, y, this.dragValue);
