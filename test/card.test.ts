@@ -238,6 +238,16 @@ describe('heating-room-card', () => {
     ]);
   });
 
+  it('without weekend helpers: one "Every day" timeline, and save writes only weekday helpers', async () => {
+    const { weekend: _, ...everyDay } = schedule;
+    const hass = twoTrvHass();
+    await mount({ ...twoTrvConfig, schedule: everyDay }, hass);
+    expect(($('hrc-schedule') as any).schedule.weekend).toBeNull();
+    expect(($('hrc-editor') as any).everyDay).toBe(true);
+    $('hrc-editor').dispatchEvent(new CustomEvent('hrc-save', { detail: { weekdayDay: 540 } }));
+    expect(hass.calls).toEqual([['input_datetime', 'set_datetime', { entity_id: schedule.weekday.day, time: '09:00:00' }]]);
+  });
+
   it('schedule edit opens editor, close hides it', async () => {
     await mount(twoTrvConfig, twoTrvHass());
     $('hrc-schedule').dispatchEvent(new CustomEvent('hrc-edit'));
@@ -431,7 +441,8 @@ describe('heating-room-card', () => {
     const text = $('.setup').textContent!;
     expect(text).toContain('Finish setting up this card');
     expect(text).toContain('Night temperature');
-    expect(text).toContain('Weekend: night starts');
+    expect(text).toContain('Weekdays: night starts');
+    expect(text).not.toContain('Weekend');
     expect(text).not.toContain('Schedule on/off');
   });
 

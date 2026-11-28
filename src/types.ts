@@ -27,7 +27,8 @@ export interface ScheduleConfig {
   night_temp: string;
   day_temp: string;
   weekday: ScheduleTimes;
-  weekend: ScheduleTimes;
+  /** Leave out to use the weekday times every day. */
+  weekend?: ScheduleTimes;
 }
 
 export interface CardConfig {

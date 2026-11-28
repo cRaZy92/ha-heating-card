@@ -25,6 +25,22 @@ const row = (el: HrcSchedule, which: 'weekday' | 'weekend') => el.shadowRoot!.qu
 beforeEach(() => (document.body.innerHTML = ''));
 
 describe('hrc-schedule', () => {
+  it('without weekend times, shows a single "Every day" timeline marked as today', async () => {
+    const el = document.createElement('hrc-schedule') as HrcSchedule;
+    Object.assign(el, {
+      schedule: { ...snap, weekend: null },
+      now: SATURDAY,
+      labels: { weekdays: 'Weekdays', weekend: 'Weekend', everyDay: 'Every day' },
+    });
+    document.body.appendChild(el);
+    await el.updateComplete;
+    const rows = el.shadowRoot!.querySelectorAll('.row');
+    expect(rows).toHaveLength(1);
+    expect(rows[0].querySelector('.label')!.textContent).toBe('Every day');
+    expect(rows[0].classList.contains('today')).toBe(true);
+    expect(rows[0].querySelector('.range')!.textContent).toBe('09:20–23:50');
+  });
+
   it('renders one segment per timeline segment with percentage geometry', async () => {
     const el = await mount();
     const segs = row(el, 'weekday').querySelectorAll<HTMLElement>('.seg');

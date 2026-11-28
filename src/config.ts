@@ -10,6 +10,16 @@ const SCHEDULE_KEYS = [
   'weekend.night',
 ];
 
+/**
+ * The schedule keys that must be set. The weekend times are optional (the weekday times then
+ * apply every day), but once one of them is set, both are needed.
+ */
+export function requiredScheduleKeys(schedule: unknown): string[] {
+  const weekend = getPath(schedule, 'weekend') as Record<string, unknown> | undefined;
+  const hasWeekend = !!weekend && Object.values(weekend).some((v) => v !== undefined && v !== null && v !== '');
+  return hasWeekend ? SCHEDULE_KEYS : SCHEDULE_KEYS.filter((k) => !k.startsWith('weekend.'));
+}
+
 function getPath(obj: any, path: string): unknown {
   return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
 }
@@ -28,7 +38,7 @@ export function normalizeConfig(raw: unknown): NormalizedConfig {
   });
 
   // No schedule is fine; a schedule that is there must be complete.
-  for (const key of cfg.schedule == null ? [] : SCHEDULE_KEYS) {
+  for (const key of cfg.schedule == null ? [] : requiredScheduleKeys(cfg.schedule)) {
     const value = getPath(cfg.schedule, key);
     if (typeof value !== 'string' || !value) {
       throw new Error(`heating-room-card: schedule.${key} is required`);

@@ -41,10 +41,13 @@ export class HrcEditor extends LitElement {
     day: 'Day',
     weekdays: 'Weekdays',
     weekend: 'Weekend',
+    everyDay: 'Every day',
     save: 'Save',
     cancel: 'Cancel',
   };
   @property() decimal = '.';
+  /** One pair of times for every day, instead of weekday and weekend times. */
+  @property({ type: Boolean }) everyDay = false;
 
   @state() private work: EditorValues = EMPTY;
   /** `initial` as it was when the editor opened; save diffs against this, not the live value. */
@@ -127,10 +130,12 @@ export class HrcEditor extends LitElement {
         ${this.renderStepper('nightTemp', 'night', 'mdi:weather-night', L.night, this.nightLimits)}
         ${this.renderStepper('dayTemp', 'day', 'mdi:white-balance-sunny', L.day, this.dayLimits)}
         <div class="times">
-          <span class="group">${L.weekdays}</span>
+          <span class="group">${this.everyDay ? L.everyDay : L.weekdays}</span>
           ${this.renderTime('weekdayDay', 'mdi:white-balance-sunny')} ${this.renderTime('weekdayNight', 'mdi:weather-night')}
-          <span class="group">${L.weekend}</span>
-          ${this.renderTime('weekendDay', 'mdi:white-balance-sunny')} ${this.renderTime('weekendNight', 'mdi:weather-night')}
+          ${this.everyDay
+            ? nothing
+            : html`<span class="group">${L.weekend}</span>
+                ${this.renderTime('weekendDay', 'mdi:white-balance-sunny')} ${this.renderTime('weekendNight', 'mdi:weather-night')}`}
         </div>
         <div class="actions">
           <button class="cancel" @click=${this.close}>${L.cancel}</button>

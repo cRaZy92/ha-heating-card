@@ -4,7 +4,7 @@ A Home Assistant Lovelace card for a single room's heating. It shows:
 
 - a large, color-changing **setpoint dial**. It is scroll-safe: a drag only starts on the arc, and a swipe anywhere else scrolls the page.
 - the **actual heating status**. It tells apart "a TRV wants heat" and "the boiler is actually heating".
-- the **weekday and weekend schedule** as two 24h timelines, both always visible.
+- the **weekday and weekend schedule** as two 24h timelines, both always visible (or a single *Every day* timeline for rooms without weekend times).
 - a **schedule editor** popup. Nothing is written until you press Save.
 - a **visual card editor**, so a room can be set up without writing YAML.
 
@@ -108,7 +108,7 @@ schedule:
 | Key | Required | Default | Description |
 |---|---|---|---|
 | `trvs` | yes | — | List of TRVs (at least 1). Each one has `climate` (required), plus optional `valve` (% sensor) and `battery` (% sensor). |
-| `schedule.*` | no | — | Leave out the whole `schedule` block for a room without a schedule: the card then hides the On/Off pill, the timelines and the schedule tick. If present, all of these are required: the `enabled` boolean, the `night_temp`/`day_temp` numbers, and the `weekday`/`weekend` `day`/`night` datetimes (time only). |
+| `schedule.*` | no | — | Leave out the whole `schedule` block for a room without a schedule: the card then hides the On/Off pill, the timelines and the schedule tick. If present, it needs the `enabled` boolean, the `night_temp`/`day_temp` numbers, and the `weekday` `day`/`night` datetimes (time only). `weekend` `day`/`night` are optional: leave both out to use the weekday times every day. |
 | `climate` | no | `trvs[0].climate` | The TRV whose setpoint the dial reads and writes. |
 | `boiler` | no | — | Boiler relay switch. Without it, a TRV calling for heat shows **Heating**. |
 | `temperature` | no | — | Room temperature sensor. The dial shows it instead of the TRV's own reading, which is skewed by the radiator. Falls back to the TRV when the sensor is unavailable. |

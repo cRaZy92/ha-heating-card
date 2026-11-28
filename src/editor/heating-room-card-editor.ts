@@ -58,8 +58,8 @@ const SCHEDULE_SCHEMA = [
       { name: 'day_temp', required: true, selector: entity({ domain: 'input_number' }) },
       { name: 'weekday_day', required: true, selector: entity({ domain: 'input_datetime' }) },
       { name: 'weekday_night', required: true, selector: entity({ domain: 'input_datetime' }) },
-      { name: 'weekend_day', required: true, selector: entity({ domain: 'input_datetime' }) },
-      { name: 'weekend_night', required: true, selector: entity({ domain: 'input_datetime' }) },
+      { name: 'weekend_day', selector: entity({ domain: 'input_datetime' }) },
+      { name: 'weekend_night', selector: entity({ domain: 'input_datetime' }) },
     ],
   },
 ];
@@ -267,6 +267,7 @@ export class HeatingRoomCardEditor extends LitElement {
       ${this.form('schedule', scheduleFormData(this.config), SCHEDULE_SCHEMA, (v: ScheduleForm) =>
         this.change(applyScheduleForm(this.config, v)),
       )}
+      <p class="hint">${t(this.hass, 'ed_weekend_help')}</p>
     `;
   }
 

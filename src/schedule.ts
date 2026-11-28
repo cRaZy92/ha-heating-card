@@ -59,7 +59,8 @@ export interface ScheduleSnapshot {
   dayTemp: number | null;
   enabled: boolean;
   weekday: { day: number | null; night: number | null };
-  weekend: { day: number | null; night: number | null };
+  /** null: no weekend times, the weekday times apply every day. */
+  weekend: { day: number | null; night: number | null } | null;
 }
 
 function num(hass: Hass, id: string): number | null {
@@ -81,13 +82,13 @@ export function readSchedule(hass: Hass, cfg: NormalizedConfig): ScheduleSnapsho
     dayTemp: num(hass, s.day_temp),
     enabled: hass.states[s.enabled]?.state === 'on',
     weekday: { day: time(hass, s.weekday.day), night: time(hass, s.weekday.night) },
-    weekend: { day: time(hass, s.weekend.day), night: time(hass, s.weekend.night) },
+    weekend: s.weekend ? { day: time(hass, s.weekend.day), night: time(hass, s.weekend.night) } : null,
   };
 }
 
 export function expectedTemp(s: ScheduleSnapshot, now: Date): number | null {
   if (!s.enabled) return null;
-  const times = isWeekend(now) ? s.weekend : s.weekday;
+  const times = isWeekend(now) && s.weekend ? s.weekend : s.weekday;
   if (times.day === null || times.night === null) return null;
   const period = periodAt(now.getHours() * 60 + now.getMinutes(), times.day, times.night);
   return period === 'day' ? s.dayTemp : s.nightTemp;

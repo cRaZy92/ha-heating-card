@@ -8,6 +8,8 @@ export type I18nKey =
   | 'status_heating'
   | 'weekdays'
   | 'weekend'
+  | 'every_day'
+  | 'ed_weekend_help'
   | 'night'
   | 'day'
   | 'schedule_hint'
@@ -60,6 +62,8 @@ const en: Record<I18nKey, string> = {
   status_heating: 'Heating',
   weekdays: 'Weekdays',
   weekend: 'Weekend',
+  every_day: 'Every day',
+  ed_weekend_help: 'Leave the weekend times empty to use the weekday times every day.',
   night: 'Night',
   day: 'Day',
   schedule_hint: 'schedule',
@@ -113,6 +117,8 @@ const sk: Record<I18nKey, string> = {
   status_heating: 'Kúri',
   weekdays: 'Pracovné dni',
   weekend: 'Víkend',
+  every_day: 'Každý deň',
+  ed_weekend_help: 'Nechaj víkendové časy prázdne a časy pracovných dní budú platiť každý deň.',
   night: 'Noc',
   day: 'Deň',
   schedule_hint: 'plán',

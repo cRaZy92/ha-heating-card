@@ -2,13 +2,17 @@ import { LitElement, html, css, nothing, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { DAY_MINUTES, formatTime, isWeekend, timelineSegments, type ScheduleSnapshot } from '../schedule';
 
-type RowKind = 'weekday' | 'weekend';
+type RowKind = 'weekday' | 'weekend' | 'every-day';
 
 @customElement('hrc-schedule')
 export class HrcSchedule extends LitElement {
   @property({ attribute: false }) schedule!: ScheduleSnapshot;
   @property({ attribute: false }) now: Date = new Date();
-  @property({ attribute: false }) labels = { weekdays: 'Weekdays', weekend: 'Weekend' };
+  @property({ attribute: false }) labels: { weekdays: string; weekend: string; everyDay?: string } = {
+    weekdays: 'Weekdays',
+    weekend: 'Weekend',
+    everyDay: 'Every day',
+  };
   @property() decimal = '.';
 
   protected willUpdate(changed: PropertyValues) {
@@ -31,9 +35,10 @@ export class HrcSchedule extends LitElement {
   }
 
   private renderRow(kind: RowKind) {
-    const times = this.schedule[kind];
-    const label = kind === 'weekday' ? this.labels.weekdays : this.labels.weekend;
-    const today = isWeekend(this.now) === (kind === 'weekend');
+    const times = (kind === 'weekend' ? this.schedule.weekend : this.schedule.weekday) ?? { day: null, night: null };
+    const label =
+      kind === 'every-day' ? (this.labels.everyDay ?? 'Every day') : kind === 'weekday' ? this.labels.weekdays : this.labels.weekend;
+    const today = kind === 'every-day' || isWeekend(this.now) === (kind === 'weekend');
     const complete = times.day !== null && times.night !== null;
     const segs = complete ? timelineSegments(times.day!, times.night!) : [];
     const nowPct = ((this.now.getHours() * 60 + this.now.getMinutes()) / DAY_MINUTES) * 100;
@@ -65,7 +70,7 @@ export class HrcSchedule extends LitElement {
           <span class="t day"><ha-icon icon="mdi:white-balance-sunny"></ha-icon>${this.temp(this.schedule.dayTemp)}</span>
           <ha-icon class="chevron" icon="mdi:chevron-right"></ha-icon>
         </div>
-        ${this.renderRow('weekday')} ${this.renderRow('weekend')}
+        ${this.schedule.weekend ? html`${this.renderRow('weekday')} ${this.renderRow('weekend')}` : this.renderRow('every-day')}
       </div>
     `;
   }

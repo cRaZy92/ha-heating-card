@@ -156,6 +156,13 @@ describe('configProblems', () => {
     const { schedule: _, ...noSchedule } = oneTrvConfig;
     expect(configProblems(noSchedule)).toEqual([]);
   });
+  it('weekend times are optional, but both or neither', () => {
+    const { weekend: _, ...everyDay } = schedule;
+    expect(configProblems({ ...oneTrvConfig, schedule: everyDay })).toEqual([]);
+    expect(configProblems({ ...oneTrvConfig, schedule: { ...everyDay, weekend: { day: schedule.weekend.day } } })).toEqual([
+      'schedule.weekend.night',
+    ]);
+  });
   it('an empty schedule still needs filling in', () => {
     expect(configProblems({ ...oneTrvConfig, schedule: {} })).toContain('schedule.enabled');
   });
@@ -166,8 +173,6 @@ describe('configProblems', () => {
       'schedule.day_temp',
       'schedule.weekday.day',
       'schedule.weekday.night',
-      'schedule.weekend.day',
-      'schedule.weekend.night',
     ]);
   });
 });

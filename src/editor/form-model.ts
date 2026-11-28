@@ -1,3 +1,4 @@
+import { requiredScheduleKeys } from '../config';
 import type { CardConfig, Hass, HassEntity, ScheduleConfig, TrvConfig } from '../types';
 
 /** A config while it is being edited: anything may still be missing. */
@@ -160,7 +161,7 @@ export function configProblems(raw: unknown): string[] {
   const problems: string[] = [];
   const trvs = Array.isArray(cfg.trvs) ? cfg.trvs : [];
   if (trvs.length === 0 || trvs.some((t) => !t || typeof t.climate !== 'string' || !t.climate)) problems.push('trvs');
-  for (const path of cfg.schedule == null ? [] : SCHEDULE_PATHS) {
+  for (const path of cfg.schedule == null ? [] : requiredScheduleKeys(cfg.schedule)) {
     const value = path.split('.').reduce<any>((o, k) => (o == null ? undefined : o[k]), cfg.schedule);
     if (typeof value !== 'string' || !value) problems.push(`schedule.${path}`);
   }

@@ -83,6 +83,9 @@ describe('expectedTemp', () => {
   it('Monday 09:30 uses weekday times → day', () => {
     expect(expectedTemp(snap, new Date(2026, 10, 30, 9, 30))).toBe(21.5);
   });
+  it('without weekend times, Saturday uses the weekday times', () => {
+    expect(expectedTemp({ ...snap, weekend: null }, new Date(2026, 10, 28, 9, 30))).toBe(21.5);
+  });
   it('disabled → null', () => {
     expect(expectedTemp({ ...snap, enabled: false }, new Date(2026, 10, 30, 9, 30))).toBeNull();
   });

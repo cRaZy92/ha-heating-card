@@ -37,6 +37,10 @@ describe('normalizeConfig', () => {
   it('accepts a room without a schedule', () => {
     expect(normalizeConfig({ type: 'x', trvs: [{ climate: 'climate.a' }] }).schedule).toBeUndefined();
   });
+  it('accepts a schedule without weekend times', () => {
+    const { weekend: _, ...everyDay } = schedule;
+    expect(normalizeConfig({ ...base, schedule: everyDay, trvs: [{ climate: 'climate.a' }] }).schedule).toEqual(everyDay);
+  });
   it('throws when schedule key missing', () => {
     const bad = { ...schedule, weekend: { day: schedule.weekend.day } };
     expect(() => normalizeConfig({ ...base, schedule: bad, trvs: [{ climate: 'climate.a' }] })).toThrow(

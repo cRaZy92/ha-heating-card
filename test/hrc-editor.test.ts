@@ -39,6 +39,21 @@ describe('hrc-editor', () => {
     expect($('.sheet')).toBeNull();
   });
 
+  it('in every-day mode shows one pair of times', async () => {
+    document.body.innerHTML = '';
+    el = document.createElement('hrc-editor') as HrcEditor;
+    Object.assign(el, {
+      initial: { ...initial, weekendDay: null, weekendNight: null },
+      everyDay: true,
+      labels: { night: 'Night', day: 'Day', weekdays: 'Weekdays', weekend: 'Weekend', everyDay: 'Every day', save: 'Save', cancel: 'Cancel' },
+    });
+    document.body.appendChild(el);
+    el.open = true;
+    await el.updateComplete;
+    expect([...el.shadowRoot!.querySelectorAll('.group')].map((g) => g.textContent)).toEqual(['Every day']);
+    expect(el.shadowRoot!.querySelectorAll('input[type=time]')).toHaveLength(2);
+  });
+
   it('stepper changes are saved', async () => {
     await mount();
     await click('.stepper.night .plus');

@@ -184,7 +184,8 @@ export class HeatingRoomCard extends LitElement {
       c.climate,
       ...[c.boiler, c.temperature, c.humidity].filter((x): x is string => !!x),
       ...c.trvs.flatMap((trv) => [trv.climate, trv.valve, trv.battery].filter((x): x is string => !!x)),
-      ...(s ? [s.enabled, s.night_temp, s.day_temp, s.weekday.day, s.weekday.night, s.weekend.day, s.weekend.night] : []),
+      ...(s ? [s.enabled, s.night_temp, s.day_temp, s.weekday.day, s.weekday.night] : []),
+      ...(s?.weekend ? [s.weekend.day, s.weekend.night] : []),
     ];
   }
 
@@ -269,8 +270,12 @@ export class HeatingRoomCard extends LitElement {
     const times: [keyof EditorValues, string][] = [
       ['weekdayDay', s.weekday.day],
       ['weekdayNight', s.weekday.night],
-      ['weekendDay', s.weekend.day],
-      ['weekendNight', s.weekend.night],
+      ...(s.weekend
+        ? ([
+            ['weekendDay', s.weekend.day],
+            ['weekendNight', s.weekend.night],
+          ] as [keyof EditorValues, string][])
+        : []),
     ];
     for (const [key, entity_id] of times) {
       const v = d[key];
@@ -423,7 +428,7 @@ export class HeatingRoomCard extends LitElement {
         <hrc-schedule
           .schedule=${schedule}
           .now=${this.now}
-          .labels=${{ weekdays: t(hass, 'weekdays'), weekend: t(hass, 'weekend') }}
+          .labels=${{ weekdays: t(hass, 'weekdays'), weekend: t(hass, 'weekend'), everyDay: t(hass, 'every_day') }}
           .decimal=${decimal}
           @hrc-edit=${() => (this.editorOpen = true)}
         ></hrc-schedule>
@@ -434,8 +439,8 @@ export class HeatingRoomCard extends LitElement {
             dayTemp: schedule.dayTemp,
             weekdayDay: schedule.weekday.day,
             weekdayNight: schedule.weekday.night,
-            weekendDay: schedule.weekend.day,
-            weekendNight: schedule.weekend.night,
+            weekendDay: schedule.weekend?.day ?? null,
+            weekendNight: schedule.weekend?.night ?? null,
           }}
           .nightLimits=${limitsOf(this.entity(s.night_temp))}
           .dayLimits=${limitsOf(this.entity(s.day_temp))}
@@ -444,10 +449,12 @@ export class HeatingRoomCard extends LitElement {
             day: t(hass, 'day'),
             weekdays: t(hass, 'weekdays'),
             weekend: t(hass, 'weekend'),
+            everyDay: t(hass, 'every_day'),
             save: t(hass, 'save'),
             cancel: t(hass, 'cancel'),
           }}
           .decimal=${decimal}
+          .everyDay=${schedule.weekend === null}
           @hrc-save=${this.onEditorSave}
           @hrc-close=${() => (this.editorOpen = false)}
         ></hrc-editor>
