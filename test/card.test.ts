@@ -394,6 +394,18 @@ describe('heating-room-card', () => {
     expect($('.room-icon').classList.contains('active')).toBe(false);
   });
 
+  it('a room without a schedule has no On/Off pill, timeline or schedule hint', async () => {
+    const { schedule: _, ...noSchedule } = twoTrvConfig;
+    await mount(noSchedule, twoTrvHass());
+    expect($('hrc-dial')).not.toBeNull();
+    expect($('.pill')).toBeNull();
+    expect($('hrc-schedule')).toBeNull();
+    expect($('hrc-editor')).toBeNull();
+    expect(dial().expected).toBeNull();
+    // Tinted while the thermostat is on.
+    expect($('.room-icon').classList.contains('active')).toBe(true);
+  });
+
   it('valve chip click fires hass-more-info', async () => {
     await mount(twoTrvConfig, twoTrvHass());
     const ids: string[] = [];

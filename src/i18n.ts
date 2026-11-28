@@ -33,6 +33,8 @@ export type I18nKey =
   | 'ed_primary'
   | 'ed_primary_help'
   | 'ed_schedule'
+  | 'ed_use_schedule'
+  | 'ed_use_schedule_help'
   | 'ed_quick_fill'
   | 'ed_quick_fill_help'
   | 'ed_enabled'
@@ -83,6 +85,8 @@ const en: Record<I18nKey, string> = {
   ed_primary: 'Dial controls',
   ed_primary_help: 'The other TRVs follow it through your sync automations.',
   ed_schedule: 'Schedule',
+  ed_use_schedule: 'Use a schedule',
+  ed_use_schedule_help: 'Turn off for a room without schedule helpers.',
   ed_quick_fill: 'Fill from helpers',
   ed_quick_fill_help: 'Pick the helper name prefix (e.g. trv_izba) to fill in all schedule helpers below.',
   ed_enabled: 'Schedule on/off',
@@ -134,6 +138,8 @@ const sk: Record<I18nKey, string> = {
   ed_primary: 'Koliesko ovláda',
   ed_primary_help: 'Ostatné hlavice ju nasledujú cez synchronizačné automatizácie.',
   ed_schedule: 'Plán',
+  ed_use_schedule: 'Použiť plán',
+  ed_use_schedule_help: 'Vypni pre miestnosť bez pomocníkov plánu.',
   ed_quick_fill: 'Vyplniť z pomocníkov',
   ed_quick_fill_help: 'Vyber predponu názvu pomocníkov (napr. trv_izba) a vyplnia sa všetky pomocníky plánu nižšie.',
   ed_enabled: 'Plán zap./vyp.',

@@ -89,6 +89,14 @@ export function applyScheduleForm(config: EditorConfig, form: ScheduleForm): Edi
   };
 }
 
+/** Turns the schedule section on (an empty schedule to fill in) or off (no schedule at all). */
+export function setUseSchedule(config: EditorConfig, on: boolean): EditorConfig {
+  const next: EditorConfig = { ...config };
+  if (on) next.schedule = config.schedule ?? {};
+  else delete next.schedule;
+  return next;
+}
+
 export function addTrv(config: EditorConfig): EditorConfig {
   return { ...config, trvs: [...(config.trvs ?? []), { climate: '' }] };
 }
@@ -130,6 +138,8 @@ function cleanObject<T extends object>(obj: T): Partial<T> {
  */
 export function cleanConfig(config: EditorConfig): EditorConfig {
   const c: any = cleanObject({ ...config, trvs: undefined });
+  // An empty schedule still means "this room uses a schedule", so the editor keeps showing its fields.
+  if (config.schedule && !c.schedule) c.schedule = {};
   if (config.trvs) {
     c.trvs = config.trvs.map((t) => {
       const trv = cleanObject(t) as TrvConfig;
@@ -150,7 +160,7 @@ export function configProblems(raw: unknown): string[] {
   const problems: string[] = [];
   const trvs = Array.isArray(cfg.trvs) ? cfg.trvs : [];
   if (trvs.length === 0 || trvs.some((t) => !t || typeof t.climate !== 'string' || !t.climate)) problems.push('trvs');
-  for (const path of SCHEDULE_PATHS) {
+  for (const path of cfg.schedule == null ? [] : SCHEDULE_PATHS) {
     const value = path.split('.').reduce<any>((o, k) => (o == null ? undefined : o[k]), cfg.schedule);
     if (typeof value !== 'string' || !value) problems.push(`schedule.${path}`);
   }

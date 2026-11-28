@@ -47,7 +47,7 @@ Add the card from the dashboard's card picker (**Heating Room Card**) and fill i
 - **Schedule:** use **Fill from helpers** and pick your helper prefix (for example `trv_izba`). It fills in
   `input_boolean.<prefix>_on_off`, `input_number.<prefix>_night_temp` / `_day_temp` and
   `input_datetime.<prefix>_day_time` / `_night_time` / `_day_time_weekend` / `_night_time_weekend`
-  that exist. Any helper can also be picked by hand.
+  that exist. Any helper can also be picked by hand. For a room without schedule helpers, turn off **Use a schedule**.
 - **Display:** when to show batteries and the low-battery threshold.
 
 Until every required entity is picked, the card shows what is still missing instead of an error.
@@ -108,13 +108,13 @@ schedule:
 | Key | Required | Default | Description |
 |---|---|---|---|
 | `trvs` | yes | — | List of TRVs (at least 1). Each one has `climate` (required), plus optional `valve` (% sensor) and `battery` (% sensor). |
-| `schedule.*` | yes | — | The `enabled` boolean, the `night_temp`/`day_temp` numbers, and the `weekday`/`weekend` `day`/`night` datetimes (time only). |
+| `schedule.*` | no | — | Leave out the whole `schedule` block for a room without a schedule: the card then hides the On/Off pill, the timelines and the schedule tick. If present, all of these are required: the `enabled` boolean, the `night_temp`/`day_temp` numbers, and the `weekday`/`weekend` `day`/`night` datetimes (time only). |
 | `climate` | no | `trvs[0].climate` | The TRV whose setpoint the dial reads and writes. |
 | `boiler` | no | — | Boiler relay switch. Without it, a TRV calling for heat shows **Heating**. |
 | `temperature` | no | — | Room temperature sensor. The dial shows it instead of the TRV's own reading, which is skewed by the radiator. Falls back to the TRV when the sensor is unavailable. |
 | `humidity` | no | — | Room humidity sensor, shown next to the current temperature. |
 | `name` | no | the climate's friendly name | Room name. |
-| `icon` | no | `mdi:radiator` | Room icon. It is tinted when the schedule is on. |
+| `icon` | no | `mdi:radiator` | Room icon. It is tinted when the schedule is on (without a schedule: while the thermostat is on). |
 | `battery_warning` | no | `25` | Batteries below this % are highlighted in red. |
 | `show_battery` | no | `low` | `low`: show only the lowest battery, and only when it is below `battery_warning`. `always`: always show every TRV's battery in the dial's top-left corner. |
 

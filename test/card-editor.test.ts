@@ -121,7 +121,7 @@ describe('heating-room-card-editor', () => {
 
   it('quick fill offers detected prefixes and fills the schedule', async () => {
     editor.remove();
-    await mount({ type: 'custom:heating-room-card', trvs: [{ climate: 'climate.shelly_trv_1' }] });
+    await mount({ type: 'custom:heating-room-card', trvs: [{ climate: 'climate.shelly_trv_1' }], schedule: {} });
     const qf = form('quick_fill');
     expect(qf.schema[0].selector.select.options).toEqual([{ value: 'trv_izba', label: 'trv_izba' }]);
     expect(qf.schema[0].selector.select.custom_value).toBe(true);
@@ -152,6 +152,22 @@ describe('heating-room-card-editor', () => {
     editor.remove();
     await mount({ type: 'custom:heating-room-card' });
     expect(trvForms()).toHaveLength(0);
+    expect(form('use_schedule').data).toEqual({ use_schedule: false });
+    expect(form('schedule')).toBeNull();
+  });
+
+  it('the schedule can be turned off and back on', async () => {
+    expect(form('use_schedule').data).toEqual({ use_schedule: true });
+    emit(form('use_schedule'), { use_schedule: false });
+    expect(last()).not.toHaveProperty('schedule');
+    await editor.updateComplete;
+    expect(form('schedule')).toBeNull();
+    expect(form('quick_fill')).toBeNull();
+
+    emit(form('use_schedule'), { use_schedule: true });
+    expect(last().schedule).toEqual({});
+    await editor.updateComplete;
     expect(form('schedule').data).toEqual({});
+    expect(form('quick_fill')).not.toBeNull();
   });
 });

@@ -8,6 +8,7 @@ import {
   quickFill,
   removeTrv,
   scheduleFormData,
+  setUseSchedule,
   setPrimary,
   stubConfig,
   updateTrv,
@@ -102,6 +103,14 @@ describe('TRV list', () => {
   });
 });
 
+describe('setUseSchedule', () => {
+  it('removes the schedule, or starts an empty one', () => {
+    expect(setUseSchedule(oneTrvConfig, false)).not.toHaveProperty('schedule');
+    expect(setUseSchedule({ type: 'x' }, true).schedule).toEqual({});
+    expect(setUseSchedule(oneTrvConfig, true).schedule).toEqual(schedule);
+  });
+});
+
 describe('cleanConfig', () => {
   it('drops empty values and keeps a stable key order', () => {
     const out = cleanConfig({
@@ -126,6 +135,10 @@ describe('cleanConfig', () => {
     expect(cleanConfig({ ...twoTrvConfig, climate: 'climate.gone' }).climate).toBeUndefined();
     expect(cleanConfig(twoTrvConfig).climate).toBe('climate.shelly_trv_2');
   });
+  it('keeps an empty schedule, which means "use a schedule"', () => {
+    expect(cleanConfig({ type: 'x', schedule: { weekday: { day: '' } } } as any).schedule).toEqual({});
+    expect(cleanConfig({ type: 'x' })).not.toHaveProperty('schedule');
+  });
   it('keeps an empty TRV row so a just-added TRV stays visible', () => {
     expect(cleanConfig({ type: 'x', trvs: [{ climate: 'climate.a' }, { climate: '' }] } as any).trvs).toEqual([
       { climate: 'climate.a' },
@@ -138,6 +151,13 @@ describe('configProblems', () => {
   it('is empty for a complete config', () => {
     expect(configProblems(twoTrvConfig)).toEqual([]);
     expect(configProblems(oneTrvConfig)).toEqual([]);
+  });
+  it('accepts a room without a schedule', () => {
+    const { schedule: _, ...noSchedule } = oneTrvConfig;
+    expect(configProblems(noSchedule)).toEqual([]);
+  });
+  it('an empty schedule still needs filling in', () => {
+    expect(configProblems({ ...oneTrvConfig, schedule: {} })).toContain('schedule.enabled');
   });
   it('lists every missing field', () => {
     expect(configProblems({ type: 'x', trvs: [{ climate: '' }], schedule: { enabled: 'input_boolean.a' } })).toEqual([

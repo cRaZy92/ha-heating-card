@@ -9,9 +9,9 @@ import './editor/heating-room-card-editor';
 import { configProblems, stubConfig } from './editor/form-model';
 import { evaluateStatus, type StatusKind } from './status';
 import { offlineTrvs, outOfSyncTrvs } from './health';
-import { expectedTemp, formatTime, readSchedule } from './schedule';
+import { expectedTemp, formatTime, readSchedule, type ScheduleSnapshot } from './schedule';
 import { decimalSeparator, t, type I18nKey } from './i18n';
-import type { Hass, HassEntity, NormalizedConfig } from './types';
+import type { Hass, HassEntity, NormalizedConfig, ScheduleConfig } from './types';
 
 /**
  * Safety net only: battery TRVs (e.g. Shelly BLU) can take tens of seconds to report a new
@@ -184,13 +184,7 @@ export class HeatingRoomCard extends LitElement {
       c.climate,
       ...[c.boiler, c.temperature, c.humidity].filter((x): x is string => !!x),
       ...c.trvs.flatMap((trv) => [trv.climate, trv.valve, trv.battery].filter((x): x is string => !!x)),
-      s.enabled,
-      s.night_temp,
-      s.day_temp,
-      s.weekday.day,
-      s.weekday.night,
-      s.weekend.day,
-      s.weekend.night,
+      ...(s ? [s.enabled, s.night_temp, s.day_temp, s.weekday.day, s.weekday.night, s.weekend.day, s.weekend.night] : []),
     ];
   }
 
@@ -240,7 +234,8 @@ export class HeatingRoomCard extends LitElement {
   }
 
   private async toggleSchedule() {
-    if (!(await this.call('input_boolean', 'toggle', { entity_id: this.config!.schedule.enabled }))) this.showError();
+    const s = this.config!.schedule;
+    if (s && !(await this.call('input_boolean', 'toggle', { entity_id: s.enabled }))) this.showError();
   }
 
   private async onDialChange(e: CustomEvent<{ value: number }>) {
@@ -264,6 +259,7 @@ export class HeatingRoomCard extends LitElement {
 
   private async onEditorSave(e: CustomEvent<Partial<EditorValues>>) {
     const s = this.config!.schedule;
+    if (!s) return;
     const d = e.detail;
     const calls: Promise<boolean>[] = [];
     const call = (domain: string, service: string, data: Record<string, unknown>) =>
@@ -284,21 +280,24 @@ export class HeatingRoomCard extends LitElement {
     if (results.includes(false)) this.showError();
   }
 
-  private renderHeader(enabled: boolean, name: string) {
+  /** `enabled` is null for a room without a schedule: no On/Off pill then. */
+  private renderHeader(enabled: boolean | null, active: boolean, name: string) {
     const c = this.config!;
     return html`
       <div class="header">
-        <ha-icon class="room-icon ${enabled ? 'active' : ''}" icon=${c.icon}></ha-icon>
+        <ha-icon class="room-icon ${active ? 'active' : ''}" icon=${c.icon}></ha-icon>
         <span class="name">${name}</span>
-        <button class="pill ${enabled ? 'on' : ''}" @click=${this.toggleSchedule}>
-          <ha-icon icon=${enabled ? 'mdi:toggle-switch' : 'mdi:toggle-switch-off'}></ha-icon>
-          ${t(this.hass, enabled ? 'on' : 'off')}
-        </button>
+        ${enabled === null
+          ? nothing
+          : html`<button class="pill ${enabled ? 'on' : ''}" @click=${this.toggleSchedule}>
+              <ha-icon icon=${enabled ? 'mdi:toggle-switch' : 'mdi:toggle-switch-off'}></ha-icon>
+              ${t(this.hass, enabled ? 'on' : 'off')}
+            </button>`}
         ${c.trvs
           .filter((trv) => trv.valve)
           .map((trv) => {
             const v = numState(this.entity(trv.valve));
-            return html`<button class="valve-chip ${enabled ? 'on' : ''}" @click=${() => this.moreInfo(trv.valve!)}>
+            return html`<button class="valve-chip ${active ? 'on' : ''}" @click=${() => this.moreInfo(trv.valve!)}>
               <ha-icon icon="mdi:pipe-valve"></ha-icon>${v === null ? '—' : `${Math.round(v)}%`}
             </button>`;
           })}
@@ -384,10 +383,12 @@ export class HeatingRoomCard extends LitElement {
     const value = this.pendingValue ?? this.targetTemp();
     // The room sensor wins when it has a reading; otherwise fall back to the TRV's own.
     const current = numState(this.entity(c.temperature)) ?? numAttr(climate, 'current_temperature');
+    // Without a schedule, the room counts as active while its thermostat is on.
+    const active = schedule ? schedule.enabled : status !== 'off' && status !== 'unavailable';
 
     return html`
       <ha-card>
-        ${this.renderHeader(schedule.enabled, name)}
+        ${this.renderHeader(schedule ? schedule.enabled : null, active, name)}
         ${this.errorVisible
           ? html`<div class="error" role="alert">
               <ha-icon icon="mdi:alert-circle-outline"></ha-icon>${t(hass, 'error_save')}
@@ -404,13 +405,21 @@ export class HeatingRoomCard extends LitElement {
           .humidity=${numState(this.entity(c.humidity))}
           .status=${status}
           .statusLabel=${t(hass, STATUS_KEY[status])}
-          .expected=${expectedTemp(schedule, this.now)}
+          .expected=${schedule ? expectedTemp(schedule, this.now) : null}
           .hintLabel=${t(hass, 'schedule_hint')}
           .pending=${this.pendingValue !== null}
           .decimal=${decimal}
           @hrc-change=${this.onDialChange}
         ></hrc-dial>
         </div>
+        ${schedule && c.schedule ? this.renderSchedule(schedule, c.schedule, decimal) : nothing}
+      </ha-card>
+    `;
+  }
+
+  private renderSchedule(schedule: ScheduleSnapshot, s: ScheduleConfig, decimal: string) {
+    const hass = this.hass!;
+    return html`
         <hrc-schedule
           .schedule=${schedule}
           .now=${this.now}
@@ -428,8 +437,8 @@ export class HeatingRoomCard extends LitElement {
             weekendDay: schedule.weekend.day,
             weekendNight: schedule.weekend.night,
           }}
-          .nightLimits=${limitsOf(this.entity(c.schedule.night_temp))}
-          .dayLimits=${limitsOf(this.entity(c.schedule.day_temp))}
+          .nightLimits=${limitsOf(this.entity(s.night_temp))}
+          .dayLimits=${limitsOf(this.entity(s.day_temp))}
           .labels=${{
             night: t(hass, 'night'),
             day: t(hass, 'day'),
@@ -442,7 +451,6 @@ export class HeatingRoomCard extends LitElement {
           @hrc-save=${this.onEditorSave}
           @hrc-close=${() => (this.editorOpen = false)}
         ></hrc-editor>
-      </ha-card>
     `;
   }
 

@@ -27,7 +27,8 @@ export function normalizeConfig(raw: unknown): NormalizedConfig {
     }
   });
 
-  for (const key of SCHEDULE_KEYS) {
+  // No schedule is fine; a schedule that is there must be complete.
+  for (const key of cfg.schedule == null ? [] : SCHEDULE_KEYS) {
     const value = getPath(cfg.schedule, key);
     if (typeof value !== 'string' || !value) {
       throw new Error(`heating-room-card: schedule.${key} is required`);

@@ -41,7 +41,8 @@ export interface CardConfig {
   /** Room humidity sensor. */
   humidity?: string;
   trvs: TrvConfig[];
-  schedule: ScheduleConfig;
+  /** Schedule helpers; leave out for a room without a schedule. */
+  schedule?: ScheduleConfig;
   battery_warning?: number;
   show_battery?: 'low' | 'always';
 }

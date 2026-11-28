@@ -11,6 +11,7 @@ import {
   removeTrv,
   scheduleFormData,
   setPrimary,
+  setUseSchedule,
   updateTrv,
   type EditorConfig,
   type ScheduleForm,
@@ -73,6 +74,7 @@ const LABEL: Record<string, I18nKey> = {
   valve: 'ed_valve',
   battery: 'ed_battery',
   primary: 'ed_primary',
+  use_schedule: 'ed_use_schedule',
   quick_fill: 'ed_quick_fill',
   enabled: 'ed_enabled',
   night_temp: 'ed_night_temp',
@@ -86,6 +88,7 @@ const LABEL: Record<string, I18nKey> = {
 };
 
 const HELP: Record<string, I18nKey> = {
+  use_schedule: 'ed_use_schedule_help',
   quick_fill: 'ed_quick_fill_help',
 };
 
@@ -234,6 +237,21 @@ export class HeatingRoomCardEditor extends LitElement {
 
       <h3>${t(this.hass, 'ed_schedule')}</h3>
       ${this.form(
+        'use_schedule',
+        { use_schedule: !!c.schedule },
+        [{ name: 'use_schedule', selector: { boolean: {} } }],
+        (v: { use_schedule?: boolean }) => this.change(setUseSchedule(this.config, !!v.use_schedule)),
+      )}
+      ${c.schedule ? this.renderSchedule(prefixes) : nothing}
+
+      <h3>${t(this.hass, 'ed_display')}</h3>
+      ${this.renderDisplay()}
+    `;
+  }
+
+  private renderSchedule(prefixes: string[]) {
+    return html`
+      ${this.form(
         'quick_fill',
         { quick_fill: this.quickPrefix },
         [
@@ -246,11 +264,15 @@ export class HeatingRoomCardEditor extends LitElement {
         ],
         (v) => this.onQuickFill(v),
       )}
-      ${this.form('schedule', scheduleFormData(c), SCHEDULE_SCHEMA, (v: ScheduleForm) =>
+      ${this.form('schedule', scheduleFormData(this.config), SCHEDULE_SCHEMA, (v: ScheduleForm) =>
         this.change(applyScheduleForm(this.config, v)),
       )}
+    `;
+  }
 
-      <h3>${t(this.hass, 'ed_display')}</h3>
+  private renderDisplay() {
+    const c = this.config;
+    return html`
       ${this.form(
         'display',
         { show_battery: c.show_battery ?? DEFAULT_SHOW_BATTERY, battery_warning: c.battery_warning ?? DEFAULT_BATTERY_WARNING },

@@ -73,8 +73,9 @@ function time(hass: Hass, id: string): number | null {
   return parseTime(hass.states[id]?.state);
 }
 
-export function readSchedule(hass: Hass, cfg: NormalizedConfig): ScheduleSnapshot {
+export function readSchedule(hass: Hass, cfg: NormalizedConfig): ScheduleSnapshot | null {
   const s = cfg.schedule;
+  if (!s) return null;
   return {
     nightTemp: num(hass, s.night_temp),
     dayTemp: num(hass, s.day_temp),
