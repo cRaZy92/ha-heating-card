@@ -188,7 +188,6 @@ describe('stubConfig', () => {
     expect(stubConfig(hass)).toEqual({
       boiler: 'switch.kotol_rele',
       trvs: [{ climate: 'climate.trv_obyvacka', battery: 'sensor.trv_obyvacka_battery' }],
-      schedule,
     });
   });
   it('never invents entity ids', () => {

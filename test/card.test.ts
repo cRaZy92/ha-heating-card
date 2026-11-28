@@ -468,7 +468,7 @@ describe('heating-room-card', () => {
     const stub = (customElements.get('heating-room-card') as any).getStubConfig(oneTrvHass());
     expect(stub.trvs[0].climate).toBe('climate.shelly_trv_3');
     expect(stub.boiler).toBe('switch.kotol_rele');
-    expect(stub.schedule).toEqual(schedule);
+    expect(stub).not.toHaveProperty('schedule');
   });
 
   it('card size and grid options', async () => {

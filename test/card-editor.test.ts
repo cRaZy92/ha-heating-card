@@ -55,6 +55,15 @@ describe('heating-room-card-editor', () => {
     expect(form('general').hass).toBe(editor.hass);
   });
 
+  it('schedule pickers are laid out in pairs, never more than two columns', () => {
+    const grids = form('schedule').schema.filter((s: any) => s.type === 'grid');
+    expect(grids.map((g: any) => g.schema.map((f: any) => f.name))).toEqual([
+      ['night_temp', 'day_temp'],
+      ['weekday_day', 'weekday_night'],
+      ['weekend_day', 'weekend_night'],
+    ]);
+  });
+
   it('entity pickers are limited to the right domains', () => {
     const sel = (f: any, name: string) => f.schema.flatMap((s: any) => s.schema ?? [s]).find((s: any) => s.name === name).selector;
     expect(sel(form('general'), 'boiler').entity.filter.domain).toEqual(['switch', 'input_boolean']);

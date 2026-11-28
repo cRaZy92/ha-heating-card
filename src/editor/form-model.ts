@@ -182,7 +182,6 @@ export function stubConfig(hass: Hass | undefined): EditorConfig {
     if (states[battery]) trv.battery = battery;
   }
   out.trvs = [trv];
-  const prefix = detectPrefixes(states)[0];
-  if (prefix) out.schedule = quickFill(prefix, states);
+  // No schedule: helpers that merely exist may belong to another room, so the user picks them.
   return out;
 }

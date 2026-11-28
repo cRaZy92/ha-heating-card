@@ -50,14 +50,27 @@ const TRV_SCHEMA = [
 
 const SCHEDULE_SCHEMA = [
   { name: 'enabled', required: true, selector: entity({ domain: 'input_boolean' }) },
+  // One grid per pair: ha-form's grid fills as many columns as fit, so this keeps it at two.
   {
     name: '',
     type: 'grid',
     schema: [
       { name: 'night_temp', required: true, selector: entity({ domain: 'input_number' }) },
       { name: 'day_temp', required: true, selector: entity({ domain: 'input_number' }) },
+    ],
+  },
+  {
+    name: '',
+    type: 'grid',
+    schema: [
       { name: 'weekday_day', required: true, selector: entity({ domain: 'input_datetime' }) },
       { name: 'weekday_night', required: true, selector: entity({ domain: 'input_datetime' }) },
+    ],
+  },
+  {
+    name: '',
+    type: 'grid',
+    schema: [
       { name: 'weekend_day', selector: entity({ domain: 'input_datetime' }) },
       { name: 'weekend_night', selector: entity({ domain: 'input_datetime' }) },
     ],
